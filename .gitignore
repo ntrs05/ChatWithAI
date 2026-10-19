@@ -1,0 +1,8 @@
+# Ảnh chụp tham khảo từ website Discord — không đưa lên repo
+discord_screenshots/
+
+node_modules/
+dist/
+.env
+.env.local
+*.log
