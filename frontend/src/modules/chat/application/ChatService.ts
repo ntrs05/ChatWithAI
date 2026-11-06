@@ -4,7 +4,7 @@ import { ApiError, errorMessage } from '@/shared/http';
 import { uid } from '@/shared/lib';
 import { topics, type RealtimeHub } from '@/shared/realtime';
 import type { Attachment, Message } from '../domain/models';
-import { mergeMessages, validateFile, validateOutgoing } from '../domain/rules';
+import { mergeMessages, toggleReaction, validateEdit, validateFile, validateOutgoing } from '../domain/rules';
 import type { FileStorage, MessageRepository } from './ports';
 import { emptyHistory, patchHistory, resetChatStore, useChatStore } from './chatStore';
 
@@ -29,9 +29,23 @@ export class ChatService {
         me: { id: user.id, displayName: user.displayName, username: user.username, avatarUrl: user.avatarUrl },
       }),
     );
+    bus.subscribe('auth.profileUpdated', ({ user }) =>
+      useChatStore.setState({
+        me: { id: user.id, displayName: user.displayName, username: user.username, avatarUrl: user.avatarUrl },
+      }),
+    );
     bus.subscribe('auth.loggedOut', () => {
       this.urlCache.clear();
       resetChatStore();
+    });
+    // "Đánh dấu đã đọc" cả server (module Server phát sự kiện) → lưu mốc đã đọc của từng kênh chữ lên server.
+    bus.subscribe('server.markedRead', ({ channelIds }) => {
+      channelIds.forEach((id) => void this.repo.markRead(id).catch(() => {}));
+    });
+    // Mở / đang xem một chat 1-1 → tải lịch sử và lưu mốc đã đọc (module Direct phát sự kiện).
+    bus.subscribe('direct.read', ({ conversationId }) => {
+      void this.loadInitial(conversationId);
+      void this.repo.markRead(conversationId).catch(() => {});
     });
     // Người dùng mở kênh text → tải lịch sử (UC05)
     bus.subscribe('channel.selected', ({ channel }) => {
@@ -43,6 +57,10 @@ export class ChatService {
       if (h?.loaded) patchHistory(message.channelId, (cur) => ({ messages: mergeMessages(cur.messages, [message]) }));
       this.clearTyping(message.channelId, message.author.id);
     });
+    // Tin bị sửa / xóa / ghim / đổi cảm xúc (từ mình hoặc người khác) → cập nhật tại chỗ
+    bus.subscribe('chat.message.changed', ({ message }) => this.applyChanged(message));
+    // Ai đó đổi tên / ảnh đại diện → cập nhật người gửi trong mọi tin đã tải
+    bus.subscribe('user.profileChanged', ({ user }) => this.applyProfile(user));
     bus.subscribe('chat.typing', ({ channelId, userId, displayName }) => {
       if (userId === useChatStore.getState().me?.id) return;
       useChatStore.setState((s) => ({
@@ -90,6 +108,67 @@ export class ChatService {
       patchHistory(channelId, () => ({ loading: false }));
       this.bus.publish('ui.toast', { kind: 'error', message: errorMessage(err) });
     }
+  }
+
+  // ===== Sửa · xóa · ghim · cảm xúc =====
+
+  /** Sửa tin của chính mình. */
+  async edit(message: Message, content: string): Promise<void> {
+    const error = validateEdit(content);
+    if (error) throw new ApiError(error, 400);
+    this.applyChanged(await this.repo.edit(message.id, content.trim()));
+  }
+
+  async remove(message: Message): Promise<void> {
+    await this.repo.remove(message.id);
+    this.applyChanged({ ...message, deleted: true, content: '', attachments: [], reactions: [], pinned: false });
+  }
+
+  async setPinned(message: Message, pinned: boolean): Promise<void> {
+    await this.repo.setPinned(message.id, pinned);
+    this.applyChanged({ ...message, pinned });
+  }
+
+  /** Thả / gỡ cảm xúc: hiện ngay trên giao diện, lỗi thì hoàn tác. */
+  async react(message: Message, emoji: string): Promise<void> {
+    const me = useChatStore.getState().me;
+    if (!me) throw new ApiError('Bạn chưa đăng nhập', 401);
+    const current = useChatStore.getState().history[message.channelId]?.messages.find((m) => m.id === message.id) ?? message;
+    this.applyChanged({ ...current, reactions: toggleReaction(current.reactions, emoji, me.id) });
+    try {
+      await this.repo.react(message.id, emoji);
+    } catch (err) {
+      // `reactions` phải được ghi rõ (kể cả mảng rỗng) — nếu bỏ trống, applyChanged sẽ giữ lại cảm xúc lạc quan vừa thêm.
+      this.applyChanged({ ...current, reactions: current.reactions ?? [] });
+      throw err;
+    }
+  }
+
+  async loadPins(channelId: string): Promise<void> {
+    const pins = await this.repo.listPins(channelId);
+    useChatStore.setState((s) => ({ pins: { ...s.pins, [channelId]: pins } }));
+  }
+
+  /** Thay bản cũ của tin bằng bản mới trong lịch sử đã tải và trong danh sách ghim (không thêm tin chưa tải). */
+  private applyChanged(message: Message): void {
+    patchHistory(message.channelId, (cur) => ({
+      messages: cur.messages.map((m) => (m.id === message.id ? { ...m, ...message, nonce: m.nonce, status: undefined } : m)),
+    }));
+    useChatStore.setState((s) => {
+      const list = s.pins[message.channelId];
+      if (!list) return s;
+      const rest = list.filter((p) => p.id !== message.id);
+      return { pins: { ...s.pins, [message.channelId]: message.pinned && !message.deleted ? [message, ...rest] : rest } };
+    });
+  }
+
+  private applyProfile(user: { id: string; displayName: string; username: string; avatarUrl: string }): void {
+    const fix = (m: Message): Message => (m.author.id === user.id ? { ...m, author: { ...m.author, ...user } } : m);
+    useChatStore.setState((s) => ({
+      me: s.me && s.me.id === user.id ? { ...s.me, ...user } : s.me,
+      history: Object.fromEntries(Object.entries(s.history).map(([k, h]) => [k, { ...h, messages: h.messages.map(fix) }])),
+      pins: Object.fromEntries(Object.entries(s.pins).map(([k, list]) => [k, list.map(fix)])),
+    }));
   }
 
   search(channelId: string, query: string): Promise<Message[]> {
@@ -174,7 +253,14 @@ export class ChatService {
         attachmentIds: msg.attachments.map((a) => a.id),
         nonce: msg.nonce!,
       });
-      patchHistory(msg.channelId, (cur) => ({ messages: mergeMessages(cur.messages, [{ ...saved, nonce: msg.nonce, status: undefined }]) }));
+      // Backend thật có thể đẩy realtime tin này TRƯỚC khi phản hồi HTTP về: lúc đó danh sách đã có bản "thật" (khác id,
+      // chưa có nonce) và bản tạm → bỏ bản tạm đi để không bị hiện 2 lần.
+      patchHistory(msg.channelId, (cur) => ({
+        messages: mergeMessages(
+          cur.messages.filter((m) => !(m.nonce === msg.nonce && m.id !== saved.id)),
+          [{ ...saved, nonce: msg.nonce, status: undefined }],
+        ),
+      }));
       this.lastTypingSent = 0;
     } catch (err) {
       patchHistory(msg.channelId, (cur) => ({

@@ -5,3 +5,6 @@ export { Spinner, FullScreenLoader } from './Spinner';
 export { Input, Textarea } from './Input';
 export { Modal } from './Modal';
 export { Toaster } from './Toaster';
+export { ContextMenu } from './ContextMenu';
+export type { MenuItem } from './ContextMenu';
+export { useSettingsModal } from './settingsModal';

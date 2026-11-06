@@ -4,6 +4,7 @@ import { Compass, Sparkles, Ticket } from 'lucide-react';
 import { art } from '@/shared/assets';
 import { useServerStore } from '../application/serverStore';
 import { CreateServerModal } from './CreateServerModal';
+import { InvitationsPanel } from './InvitationsPanel';
 
 /** Trang chủ trong ứng dụng: lối tắt Tạo / Tham gia / Khám phá server. */
 export function HomeView({ displayName }: { displayName: string }) {
@@ -27,6 +28,8 @@ export function HomeView({ displayName }: { displayName: string }) {
             <p className="mt-1 text-slate-400">Hôm nay bạn muốn trò chuyện ở đâu?</p>
           </div>
         </div>
+
+        <InvitationsPanel />
 
         <div className="mt-10 grid gap-4 md:grid-cols-3">
           {actions.map((a) => (

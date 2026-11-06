@@ -1,10 +1,12 @@
-import type { ApiMode } from '@/shared/config';
 import type { VoicePresenceRepository } from '../application/ports';
-import { HttpVoicePresenceRepository, MockVoicePresenceRepository } from './VoicePresenceRepositories';
+import { HttpVoicePresenceRepository, registerVoiceWire } from './VoicePresenceRepositories';
 
 export { WebRtcMesh } from './WebRtcMesh';
+export { AdaptiveMesh } from './LiveKitMesh';
 export { BrowserMicrophone, WebAudioLevelMeter } from './browserAudio';
+export { BrowserAudioDevices } from './audioDevices';
 
-export function createVoicePresenceRepository(mode: ApiMode): VoicePresenceRepository {
-  return mode === 'mock' ? new MockVoicePresenceRepository() : new HttpVoicePresenceRepository();
+export function createVoicePresenceRepository(): VoicePresenceRepository {
+  registerVoiceWire();
+  return new HttpVoicePresenceRepository();
 }

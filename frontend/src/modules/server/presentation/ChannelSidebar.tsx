@@ -1,22 +1,26 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, Hash, Plus, ShieldCheck, UserPlus, Volume2 } from 'lucide-react';
+import { ChevronDown, Hash, Lock, Plus, ShieldCheck, UserPlus, Volume2 } from 'lucide-react';
 import { cn } from '@/shared/lib';
 import { selectMyRole, useServerStore } from '../application/serverStore';
-import type { Channel, ChannelType } from '../domain/models';
+import type { Channel, ChannelType, Server } from '../domain/models';
 import { permissions } from '../domain/rules';
+import { ChannelAccessModal } from './ChannelAccessModal';
 import { CreateChannelModal } from './CreateChannelModal';
 import { InviteModal } from './InviteModal';
+import { ServerMenuLayer } from './ServerMenuLayer';
 
 interface Props {
   serverId: string;
+  /** Slot: danh sách bạn bè để mời vào server (module Friends cấp qua composition root). */
+  renderInviteExtra?: (server: Server) => ReactNode;
   /** Slot: module Voice vẽ danh sách người trong kênh thoại */
   renderVoiceExtra?: (channel: Channel) => ReactNode;
   footer?: ReactNode;
   onNavigate?: () => void;
 }
 
-export function ChannelSidebar({ serverId, renderVoiceExtra, footer, onNavigate }: Props) {
+export function ChannelSidebar({ serverId, renderVoiceExtra, renderInviteExtra, footer, onNavigate }: Props) {
   const navigate = useNavigate();
   const server = useServerStore((s) => s.servers.find((x) => x.id === serverId));
   const channels = useServerStore((s) => s.channels[serverId]);
@@ -27,7 +31,9 @@ export function ChannelSidebar({ serverId, renderVoiceExtra, footer, onNavigate 
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [contextAnchor, setContextAnchor] = useState<{ x: number; y: number } | null>(null);
   const [createType, setCreateType] = useState<ChannelType | null>(null);
+  const [accessChannel, setAccessChannel] = useState<Channel | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -68,7 +74,7 @@ export function ChannelSidebar({ serverId, renderVoiceExtra, footer, onNavigate 
             const active = c.id === activeChannelId;
             const count = unread[c.id]?.count ?? 0;
             return (
-              <li key={c.id}>
+              <li key={c.id} className="group relative">
                 <button
                   onClick={() => open(c)}
                   className={cn(
@@ -82,10 +88,21 @@ export function ChannelSidebar({ serverId, renderVoiceExtra, footer, onNavigate 
                     <Volume2 size={17} className={active ? 'text-brand-300' : 'opacity-70'} />
                   )}
                   <span className={cn('flex-1 truncate', count > 0 && 'font-semibold')}>{c.name}</span>
+                  {c.isPrivate && <Lock size={13} aria-label="Kênh riêng tư" className="shrink-0 opacity-60" />}
                   {count > 0 && (
                     <span className="rounded-full bg-nova-500 px-1.5 text-[11px] font-bold leading-[18px] text-white">{count}</span>
                   )}
                 </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => setAccessChannel(c)}
+                    aria-label={`Quyền truy cập kênh ${c.name}`}
+                    title="Quyền truy cập kênh"
+                    className="absolute right-1.5 top-1.5 hidden rounded bg-ink-850 p-1 text-muted hover:text-white group-hover:block"
+                  >
+                    <Lock size={14} />
+                  </button>
+                )}
                 {c.type === 'voice' && renderVoiceExtra?.(c)}
               </li>
             );
@@ -101,6 +118,11 @@ export function ChannelSidebar({ serverId, renderVoiceExtra, footer, onNavigate 
       <div ref={menuRef} className="relative">
         <button
           onClick={() => setMenuOpen((v) => !v)}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            setMenuOpen(false);
+            setContextAnchor({ x: e.clientX, y: e.clientY });
+          }}
           className="relative flex h-[88px] w-full items-end overflow-hidden bg-gradient-to-br from-brand-600/50 via-ink-700 to-aurora-500/40 px-4 pb-3 text-left"
         >
           <img src={server.iconUrl} alt="" className="absolute -right-3 -top-2 h-24 w-24 opacity-90 drop-shadow-xl" />
@@ -147,13 +169,15 @@ export function ChannelSidebar({ serverId, renderVoiceExtra, footer, onNavigate 
 
       {footer}
 
-      <InviteModal server={server} open={inviteOpen} onClose={() => setInviteOpen(false)} />
+      <InviteModal server={server} open={inviteOpen} onClose={() => setInviteOpen(false)} extra={renderInviteExtra?.(server)} />
+      <ServerMenuLayer server={server} anchor={contextAnchor} onCloseMenu={() => setContextAnchor(null)} renderInviteExtra={renderInviteExtra} />
       <CreateChannelModal
         serverId={serverId}
         open={createType !== null}
         defaultType={createType ?? 'text'}
         onClose={() => setCreateType(null)}
       />
+      {accessChannel && <ChannelAccessModal channel={accessChannel} onClose={() => setAccessChannel(null)} />}
     </aside>
   );
 }
