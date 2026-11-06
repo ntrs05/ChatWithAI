@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { SummarizeButton, SummaryPanel, useAiStore } from '@/modules/ai';
 import { ChatView } from '@/modules/chat';
-import { MemberList, serverService, useServerStore } from '@/modules/server';
+import { MemberList, permissions, selectMyRole, serverService, useServerStore } from '@/modules/server';
 import { VoiceRoomView } from '@/modules/voice';
 import { errorMessage } from '@/shared/http';
 import { toast } from '@/shared/event-bus';
@@ -21,6 +21,7 @@ export function ServerPage() {
   const isMember = useServerStore((s) => s.servers.some((x) => x.id === serverId));
   const channel = useServerStore((s) => s.channels[serverId]?.find((c) => c.id === channelId) ?? null);
   const membersOpen = useUiStore((s) => s.membersOpen);
+  const canModerate = permissions.canModerate(useServerStore(selectMyRole(serverId)));
   const aiOpen = useAiStore((s) => s.panelOpen && s.channelId === channelId);
 
   useEffect(() => {
@@ -57,6 +58,7 @@ export function ServerPage() {
       <ChatView
         channel={channel}
         headerActions={<SummarizeButton channelId={channel.id} />}
+        permissions={{ canPin: canModerate, canDeleteOthers: canModerate }}
         membersOpen={membersOpen}
         onToggleMembers={() => useUiStore.setState({ membersOpen: !membersOpen })}
         onOpenSidebar={openSidebar}

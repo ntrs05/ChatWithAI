@@ -1,21 +1,24 @@
-import { config, type ApiMode } from '@/shared/config';
+import { config } from '@/shared/config';
 import type { AppEventBus } from '@/shared/event-bus';
 import { clientId } from '@/shared/lib';
 import { topics, type RealtimeHub } from '@/shared/realtime';
 import { VoiceService } from './application/VoiceService';
-import { BrowserMicrophone, WebAudioLevelMeter, WebRtcMesh, createVoicePresenceRepository } from './infrastructure';
+import { BrowserAudioDevices, AdaptiveMesh, BrowserMicrophone, WebAudioLevelMeter, WebRtcMesh, createVoicePresenceRepository } from './infrastructure';
 
 let instance: VoiceService | null = null;
+const devices = new BrowserAudioDevices();
 
-export function initVoiceModule(deps: { bus: AppEventBus; hub: RealtimeHub; mode: ApiMode }): VoiceService {
-  // Tín hiệu WebRTC được PUBLISH lên topic voice:<channelId> qua RealtimeHub
-  const mesh = new WebRtcMesh(
+/** Chọn thiết bị + kiểm tra micro/loa (dùng trong Cài đặt → Giọng nói). */
+export const audioDevices = () => devices;
+
+export function initVoiceModule(deps: { bus: AppEventBus; hub: RealtimeHub }): VoiceService {
+  // Ưu tiên SFU (LiveKit) cho phòng đông; server chưa bật thì dùng mesh WebRTC. Tín hiệu mesh được PUBLISH lên topic voice:<channelId>.
+  const mesh = new AdaptiveMesh(
     clientId,
-    (env) => deps.hub.publish(topics.voice(env.channelId), 'voice.signal', env),
-    config.iceServers,
+    new WebRtcMesh(clientId, (env) => deps.hub.publish(topics.voice(env.channelId), 'voice.signal', env), config.iceServers),
   );
   instance = new VoiceService(
-    createVoicePresenceRepository(deps.mode),
+    createVoicePresenceRepository(),
     new BrowserMicrophone(),
     mesh,
     new WebAudioLevelMeter(),

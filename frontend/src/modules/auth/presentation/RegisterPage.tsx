@@ -8,6 +8,7 @@ import { Button, Input } from '@/shared/ui';
 import { hasErrors, validateRegister, type FieldErrors, type RegisterInput } from '../domain/User';
 import { authService } from '../module';
 import { AuthLayout } from './AuthLayout';
+import { GoogleSignIn } from './GoogleSignIn';
 import { PasswordInput } from './PasswordInput';
 
 export function RegisterPage() {
@@ -114,6 +115,8 @@ export function RegisterPage() {
           Đăng ký
         </Button>
       </form>
+
+      <GoogleSignIn text="signup_with" onSuccess={() => navigate('/app', { replace: true })} onError={setServerError} />
 
       <p className="mt-5 text-center text-sm text-muted">
         Đã có tài khoản?{' '}

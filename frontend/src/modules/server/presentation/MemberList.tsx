@@ -10,7 +10,8 @@ export function MemberList({ serverId }: { serverId: string }) {
 
   if (!members) return null;
   const groups: Array<{ title: string; items: Member[] }> = [
-    { title: 'Quản trị viên', items: members.filter((m) => m.role === 'admin') },
+    { title: 'Chủ server', items: members.filter((m) => m.role === 'owner') },
+    { title: 'Quản trị viên', items: members.filter((m) => m.role === 'moderator') },
     { title: 'Thành viên', items: members.filter((m) => m.role === 'member') },
   ];
 

@@ -28,3 +28,30 @@ export interface AudioLevelMeter {
   unwatch(id: string): void;
   unwatchAll(): void;
 }
+
+export interface AudioDeviceInfo {
+  id: string;
+  label: string;
+}
+
+export interface MicTestSession {
+  /** Dừng ghi, nhả micro, trả bản ghi (null nếu không thu được gì). */
+  stop(): Promise<Blob | null>;
+}
+
+export interface PlaybackHandle {
+  /** Resolve khi phát xong hoặc bị dừng. */
+  ended: Promise<void>;
+  stop(): void;
+}
+
+/** Chọn thiết bị, kiểm tra micro (ghi → nghe lại) và loa. */
+export interface AudioDevicesPort {
+  supportsSpeakerSelect(): boolean;
+  supportsRecording(): boolean;
+  requestPermission(): Promise<boolean>;
+  list(): Promise<{ mics: AudioDeviceInfo[]; speakers: AudioDeviceInfo[] }>;
+  startMicTest(micId: string, onLevel: (level: number) => void): Promise<MicTestSession>;
+  play(blob: Blob, speakerId: string, volume: number): Promise<PlaybackHandle>;
+  playTone(speakerId: string, volume: number): Promise<void>;
+}

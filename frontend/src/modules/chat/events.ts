@@ -5,6 +5,8 @@ declare module '@/shared/event-bus/events' {
   interface AppEvents {
     /** (Realtime) Có tin nhắn mới trong một kênh. */
     'chat.message.created': { message: Message };
+    /** (Realtime) Một tin nhắn vừa bị sửa / xóa / ghim / đổi cảm xúc — `message` là bản đã cập nhật. */
+    'chat.message.changed': { message: Message };
     /** (Realtime, tạm thời) Ai đó đang gõ phím. */
     'chat.typing': { channelId: string; userId: string; displayName: string };
   }

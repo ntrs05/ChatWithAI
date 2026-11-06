@@ -1,11 +1,9 @@
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
-  Boxes,
   FileUp,
   Hash,
   History,
-  Layers,
   Mic,
   Radio,
   ShieldCheck,
@@ -134,24 +132,6 @@ const features = [
   },
 ];
 
-const architecture = [
-  {
-    icon: Layers,
-    title: 'Layered Architecture',
-    text: 'Mỗi module chia 4 tầng: Presentation → Application → Domain, còn Infrastructure hiện thực các port (Mock hoặc HTTP).',
-  },
-  {
-    icon: Boxes,
-    title: 'Modular Monolith',
-    text: 'Một ứng dụng, 5 module độc lập: auth · server · chat · voice · ai. Mỗi module chỉ lộ ra một public API (index.ts).',
-  },
-  {
-    icon: Radio,
-    title: 'Pub-Sub',
-    text: 'Module giao tiếp qua Event Bus có kiểu. Sự kiện realtime từ Socket.IO / BroadcastChannel cũng đổ vào cùng bus.',
-  },
-];
-
 export function LandingPage() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-ink-950 text-slate-100">
@@ -167,7 +147,6 @@ export function LandingPage() {
           </Link>
           <div className="hidden items-center gap-8 text-sm font-semibold text-slate-300 md:flex">
             <a href="#tinh-nang" className="hover:text-white">Tính năng</a>
-            <a href="#kien-truc" className="hover:text-white">Kiến trúc</a>
             <Link to="/register" className="hover:text-white">Đăng ký</Link>
           </div>
           <Link to="/login" className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-ink-950 hover:bg-brand-50">
@@ -231,27 +210,6 @@ export function LandingPage() {
               </div>
             </article>
           ))}
-        </div>
-      </section>
-
-      {/* ARCHITECTURE */}
-      <section id="kien-truc" className="relative py-20">
-        <div className="mx-auto max-w-6xl px-5 sm:px-8">
-          <div className="max-w-2xl">
-            <span className="text-xs font-bold uppercase tracking-[0.2em] text-aurora-300">Kiến trúc frontend</span>
-            <h2 className="mt-3 font-display text-3xl font-extrabold text-white sm:text-4xl">Ba mẫu kiến trúc, một hệ thống gọn gàng</h2>
-          </div>
-          <div className="mt-10 grid gap-5 md:grid-cols-3">
-            {architecture.map((a) => (
-              <div key={a.title} className="rounded-3xl border border-white/10 bg-gradient-to-br from-ink-800 to-ink-900 p-6">
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-brand-400 to-aurora-500 text-ink-950">
-                  <a.icon size={22} />
-                </span>
-                <h3 className="mt-5 font-display text-xl font-bold text-white">{a.title}</h3>
-                <p className="mt-2 leading-relaxed text-slate-400">{a.text}</p>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
