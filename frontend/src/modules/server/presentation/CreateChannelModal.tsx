@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Hash, ShieldCheck, Volume2 } from 'lucide-react';
+import { Hash, Lock, ShieldCheck, Volume2 } from 'lucide-react';
 import { errorMessage } from '@/shared/http';
 import { cn } from '@/shared/lib';
-import { Button, Input, Modal } from '@/shared/ui';
+import { Avatar, Button, Input, Modal } from '@/shared/ui';
+import { useServerStore } from '../application/serverStore';
 import type { ChannelType } from '../domain/models';
 import { normalizeChannelName } from '../domain/rules';
 import { serverService } from '../module';
@@ -23,6 +24,10 @@ export function CreateChannelModal({ serverId, open, defaultType = 'text', onClo
   const [topic, setTopic] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
+  const members = useServerStore((s) => s.members[serverId]) ?? [];
+  const meId = useServerStore((s) => s.meId);
 
   useEffect(() => {
     if (open) {
@@ -30,6 +35,8 @@ export function CreateChannelModal({ serverId, open, defaultType = 'text', onClo
       setName('');
       setTopic('');
       setError('');
+      setIsPrivate(false);
+      setPicked([]);
     }
   }, [open, defaultType]);
 
@@ -38,7 +45,7 @@ export function CreateChannelModal({ serverId, open, defaultType = 'text', onClo
     setLoading(true);
     setError('');
     try {
-      const channel = await serverService().createChannel(serverId, { name, type, topic });
+      const channel = await serverService().createChannel(serverId, { name, type, topic, isPrivate, memberIds: picked });
       onClose();
       if (channel.type === 'text') navigate(`/app/${serverId}/${channel.id}`);
     } catch (err) {
@@ -109,6 +116,35 @@ export function CreateChannelModal({ serverId, open, defaultType = 'text', onClo
         />
         {type === 'text' && (
           <Input label="Chủ đề (không bắt buộc)" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Kênh này dùng để…" />
+        )}
+        <label className="flex items-center gap-3 rounded-xl border border-ink-600 bg-ink-900/50 p-3">
+          <Lock size={18} className="text-slate-300" />
+          <span className="flex-1">
+            <span className="block text-sm font-semibold">Kênh riêng tư</span>
+            <span className="block text-xs text-muted">Chỉ chủ server và người bạn chọn mới thấy kênh này.</span>
+          </span>
+          <input type="checkbox" checked={isPrivate} onChange={(e) => setIsPrivate(e.target.checked)} aria-label="Kênh riêng tư" className="h-5 w-5 accent-brand-400" />
+        </label>
+        {isPrivate && (
+          <ul className="max-h-40 space-y-1 overflow-y-auto rounded-xl border border-ink-600 p-2">
+            {members
+              .filter((m) => m.user.id !== meId)
+              .map((m) => (
+                <li key={m.user.id}>
+                  <label className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1 hover:bg-white/5">
+                    <input
+                      type="checkbox"
+                      className="accent-brand-400"
+                      checked={picked.includes(m.user.id)}
+                      onChange={(e) => setPicked((list) => (e.target.checked ? [...list, m.user.id] : list.filter((id) => id !== m.user.id)))}
+                    />
+                    <Avatar src={m.user.avatarUrl} name={m.user.displayName} size={24} />
+                    <span className="truncate text-sm">{m.user.displayName}</span>
+                  </label>
+                </li>
+              ))}
+            {members.filter((m) => m.user.id !== meId).length === 0 && <li className="px-2 py-1 text-sm text-muted">Server chưa có thành viên khác.</li>}
+          </ul>
         )}
         {error && (
           <p role="alert" className="rounded-lg bg-rose-500/10 px-3 py-2 text-sm text-rose-200">

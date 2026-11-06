@@ -1,6 +1,6 @@
 import type { AppEventBus } from '@/shared/event-bus';
 import { tokenStore } from '@/shared/http';
-import type { AuthSession, LoginInput, RegisterInput } from '../domain/User';
+import type { AuthSession, LoginInput, ProfileInput, RegisterInput } from '../domain/User';
 import type { AuthRepository } from './ports';
 import { useAuthStore } from './authStore';
 
@@ -13,6 +13,18 @@ export class AuthService {
     private readonly repo: AuthRepository,
     private readonly bus: AppEventBus,
   ) {}
+
+  /** Đăng ký lắng nghe realtime: mình đổi hồ sơ ở tab khác → tab này cập nhật theo. Gọi một lần ở module init. */
+  listenProfileChanges(): void {
+    this.bus.subscribe('user.profileChanged', ({ user: changed }) => {
+      const me = useAuthStore.getState().user;
+      if (!me || me.id !== changed.id) return;
+      if (me.displayName === changed.displayName && me.avatarUrl === changed.avatarUrl) return; // chính tab này vừa lưu
+      const user = { ...me, displayName: changed.displayName, username: changed.username || me.username, avatarUrl: changed.avatarUrl };
+      useAuthStore.setState({ user });
+      this.bus.publish('auth.profileUpdated', { user });
+    });
+  }
 
   async restoreSession(): Promise<void> {
     const token = tokenStore.get();
@@ -43,6 +55,33 @@ export class AuthService {
     });
     this.applySession(session);
     this.bus.publish('ui.toast', { kind: 'success', message: `Chào mừng ${session.user.displayName} đến với Nebula!` });
+  }
+
+  /** Đăng nhập / đăng ký bằng Google (backend xác minh ID token). */
+  async loginWithGoogle(idToken: string): Promise<void> {
+    this.applySession(await this.repo.loginWithGoogle(idToken));
+  }
+
+  /** Trang Cài đặt → Hồ sơ. Cập nhật store ngay và báo các module khác. */
+  async updateProfile(input: ProfileInput): Promise<void> {
+    const user = await this.repo.updateProfile({
+      displayName: input.displayName.trim(),
+      avatarUrl: input.avatarUrl,
+      bio: input.bio.trim(),
+    });
+    useAuthStore.setState({ user });
+    this.bus.publish('auth.profileUpdated', { user });
+  }
+
+  async changePassword(input: { currentPassword: string; newPassword: string }): Promise<void> {
+    await this.repo.changePassword(input);
+    // Tài khoản Google vừa đặt mật khẩu lần đầu → từ giờ phải nhập mật khẩu hiện tại khi đổi.
+    const user = useAuthStore.getState().user;
+    if (user && !user.hasPassword) useAuthStore.setState({ user: { ...user, hasPassword: true } });
+  }
+
+  uploadAvatar(file: File): Promise<string> {
+    return this.repo.uploadAvatar(file);
   }
 
   async logout(): Promise<void> {

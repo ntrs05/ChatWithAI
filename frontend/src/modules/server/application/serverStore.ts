@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Channel, Member, Role, Server } from '../domain/models';
+import type { Channel, Invitation, Member, Role, Server, ServerSettings } from '../domain/models';
 
 interface ServerState {
   meId: string | null;
@@ -13,6 +13,10 @@ interface ServerState {
   lastChannel: Record<string, string>;
   /** Số tin chưa đọc theo kênh */
   unread: Record<string, { serverId: string; count: number }>;
+  /** Cài đặt thông báo / tắt âm theo server (thiếu = mặc định). */
+  settings: Record<string, ServerSettings>;
+  /** Lời mời vào server đang chờ mình trả lời. */
+  invitations: Invitation[];
 }
 
 const initial: ServerState = {
@@ -25,6 +29,8 @@ const initial: ServerState = {
   activeChannelId: null,
   lastChannel: {},
   unread: {},
+  settings: {},
+  invitations: [],
 };
 
 export const useServerStore = create<ServerState>(() => ({ ...initial }));
@@ -44,3 +50,5 @@ export const selectMyRole = (serverId: string | null) => (s: ServerState): Role 
 
 export const selectServerUnread = (serverId: string) => (s: ServerState) =>
   Object.values(s.unread).reduce((sum, u) => (u.serverId === serverId ? sum + u.count : sum), 0);
+
+export const selectServerSettings = (serverId: string) => (s: ServerState): ServerSettings | undefined => s.settings[serverId];

@@ -22,9 +22,12 @@ export interface Channel {
   topic: string;
   position: number;
   createdAt: string;
+  /** Kênh riêng tư: chỉ chủ server và người được thêm mới thấy. */
+  isPrivate?: boolean;
 }
 
-export type Role = 'admin' | 'member';
+/** owner = chủ server · moderator = quản trị viên · member = thành viên (giống Discord). */
+export type Role = 'owner' | 'moderator' | 'member';
 
 export interface Member {
   serverId: ID;
@@ -44,4 +47,27 @@ export interface CreateChannelInput {
   name: string;
   type: ChannelType;
   topic: string;
+  isPrivate?: boolean;
+  /** Người được vào kênh riêng tư (chủ server luôn được vào). */
+  memberIds?: string[];
+}
+
+/** Mức thông báo của CẢ một server (chuột phải vào server → Cài đặt thông báo). */
+export type NotifyLevel = 'all' | 'mentions' | 'nothing';
+
+export interface ServerSettings {
+  level: NotifyLevel;
+  /** Tắt âm tới thời điểm này (ISO). null = không tắt âm. */
+  mutedUntil: string | null;
+}
+
+/** Lời mời vào server do người khác gửi, đang chờ mình trả lời. */
+export interface Invitation {
+  id: ID;
+  serverId: ID;
+  serverName: string;
+  iconUrl: string;
+  memberCount: number;
+  invitedBy: UserProfile;
+  createdAt: string;
 }

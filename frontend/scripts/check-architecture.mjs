@@ -5,14 +5,13 @@
  *  MODULAR MONOLITH
  *   R1. Module A chỉ được import module B qua public API: '@/modules/B' (không import sâu).
  *   R2. Không import tương đối vượt ra ngoài module của mình.
- *   R3. shared/ là shared kernel → không phụ thuộc vào modules/, app/, mock-backend/.
+ *   R3. shared/ là shared kernel → không phụ thuộc vào modules/, app/.
  *   R4. modules/ không phụ thuộc vào app/ (composition root).
  *
  *  LAYERED (bên trong mỗi module)
  *   R5. domain/          → không import application / infrastructure / presentation, React, Zustand, HTTP, realtime.
  *   R6. application/     → không import presentation / infrastructure.
  *   R7. presentation/    → không import infrastructure.
- *   R8. '@/mock-backend' → chỉ được dùng trong <module>/infrastructure/ và app/bootstrap.ts.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
@@ -56,7 +55,7 @@ for (const file of files) {
     const report = (rule, msg) => violations.push(`${rule}  ${rel}\n      import '${spec}' — ${msg}`);
 
     // Quy tắc với thư viện npm trong tầng domain
-    if (from.layer === 'domain' && /^(react|react-dom|zustand|socket\.io-client)(\/|$)/.test(spec)) {
+    if (from.layer === 'domain' && /^(react|react-dom|zustand|@microsoft\/signalr)(\/|$)/.test(spec)) {
       report('R5', 'domain phải thuần, không phụ thuộc framework');
       continue;
     }
@@ -65,12 +64,8 @@ for (const file of files) {
     if (!target) continue;
     const to = describe(target);
 
-    if (from.area === 'shared' && ['modules', 'app', 'mock-backend'].includes(to.area)) report('R3', 'shared không được phụ thuộc vào tầng trên');
+    if (from.area === 'shared' && ['modules', 'app'].includes(to.area)) report('R3', 'shared không được phụ thuộc vào tầng trên');
     if (from.area === 'modules' && to.area === 'app') report('R4', 'module không được phụ thuộc vào app/');
-    if (to.area === 'mock-backend' && from.area !== 'mock-backend') {
-      const allowed = (from.area === 'modules' && from.layer === 'infrastructure') || rel === 'app/bootstrap.ts';
-      if (!allowed) report('R8', 'chỉ tầng infrastructure / bootstrap được dùng backend giả lập');
-    }
 
     if (from.area === 'modules' && to.area === 'modules') {
       if (to.module !== from.module) {

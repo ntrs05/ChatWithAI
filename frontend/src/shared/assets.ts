@@ -31,3 +31,16 @@ export const serverIcons: string[] = [
 ].map(img3d);
 
 export const avatars: string[] = Array.from({ length: 16 }, (_, i) => `/avatars/av-${String(i + 1).padStart(2, '0')}.svg`);
+
+/** Chọn ổn định một phần tử theo id (cùng id luôn ra cùng kết quả) — dùng khi backend chưa có ảnh đại diện. */
+function pickStable<T>(items: readonly T[], id: string): T {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return items[h % items.length];
+}
+
+/** Ảnh đại diện dự phòng cho người dùng chưa đặt ảnh. */
+export const fallbackAvatar = (id: string) => pickStable(avatars, id);
+
+/** Biểu tượng dự phòng cho server chưa đặt biểu tượng. */
+export const fallbackServerIcon = (id: string) => pickStable(serverIcons, id);

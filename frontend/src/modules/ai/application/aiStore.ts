@@ -1,10 +1,11 @@
 import { create } from 'zustand';
-import { DEFAULT_SUMMARY_RANGE, type Summary } from '../domain/models';
+import { DEFAULT_SUMMARY_SCOPE, type Summary, type SummaryScope } from '../domain/models';
 
 interface AiState {
   panelOpen: boolean;
   channelId: string | null;
-  limit: number;
+  scope: SummaryScope;
+  prompt: string | null;
   status: 'idle' | 'loading' | 'done' | 'error';
   summary: Summary | null;
   error: string | null;
@@ -13,7 +14,8 @@ interface AiState {
 const initial: AiState = {
   panelOpen: false,
   channelId: null,
-  limit: DEFAULT_SUMMARY_RANGE,
+  scope: DEFAULT_SUMMARY_SCOPE,
+  prompt: null,
   status: 'idle',
   summary: null,
   error: null,
