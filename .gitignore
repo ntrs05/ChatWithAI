@@ -6,3 +6,12 @@ dist/
 .env
 .env.local
 *.log
+
+# Biến môi trường: KHÔNG commit bí mật, chỉ commit .env.example
+.env
+.env.*
+!.env.example
+
+# Frontend
+node_modules/
+dist/
