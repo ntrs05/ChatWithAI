@@ -1,0 +1,125 @@
+### Gọi thử API bằng VS Code (extension REST Client) hoặc Visual Studio / Rider (bấm "Send Request").
+@host = http://localhost:5000
+
+### Kiểm tra API sống (không cần đăng nhập)
+GET {{host}}/health
+
+### 1. Đăng nhập Google: lấy idToken từ Google Sign-In ở frontend rồi dán vào đây
+###    Email có trong ADMIN_EMAILS (.env) sẽ là admin hệ thống.
+POST {{host}}/api/auth/google
+Content-Type: application/json
+
+{ "idToken": "PASTE_GOOGLE_ID_TOKEN" }
+
+### Token lấy ở bước 1
+@token = PASTE_ACCESS_TOKEN
+
+### ===== Hồ sơ =====
+GET {{host}}/api/users/me
+Authorization: Bearer {{token}}
+
+###
+GET {{host}}/api/users/search?q=an
+Authorization: Bearer {{token}}
+
+### ===== Tạo server (người tạo tự thành chủ server) =====
+# @name createServer
+POST {{host}}/api/servers
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "name": "Hội đá bóng", "joinPolicy": "RequestToJoin" }
+
+###
+@serverId = {{createServer.response.body.id}}
+
+GET {{host}}/api/servers/{{serverId}}
+Authorization: Bearer {{token}}
+
+### Thêm thành viên
+POST {{host}}/api/servers/{{serverId}}/members
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "userId": "USER_ID" }
+
+### Phong quản trị viên (Moderator) / hạ về thành viên (Member)
+PUT {{host}}/api/servers/{{serverId}}/members/USER_ID/role
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "role": "Moderator" }
+
+### Giao quyền chủ server
+PUT {{host}}/api/servers/{{serverId}}/owner
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "userId": "USER_ID" }
+
+### ===== Kênh và tin nhắn =====
+# @name channels
+GET {{host}}/api/servers/{{serverId}}/channels
+Authorization: Bearer {{token}}
+
+###
+@channelId = {{channels.response.body.categories[0].channels[0].id}}
+
+POST {{host}}/api/conversations/{{channelId}}/messages
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "content": "Xin chào cả server 👋" }
+
+###
+GET {{host}}/api/conversations/{{channelId}}/messages?take=50
+Authorization: Bearer {{token}}
+
+### Tìm kiếm có bộ lọc
+GET {{host}}/api/search?q=chào&from=2026-01-01
+Authorization: Bearer {{token}}
+
+### ===== File =====
+POST {{host}}/api/files
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=NebulaBoundary
+
+--NebulaBoundary
+Content-Disposition: form-data; name="file"; filename="hello.txt"
+Content-Type: text/plain
+
+Xin chào từ Nebula
+--NebulaBoundary--
+
+### ===== Thông báo =====
+GET {{host}}/api/notifications
+Authorization: Bearer {{token}}
+
+### Tắt tiếng kênh 1 giờ (level: All | MentionsOnly | Nothing)
+PUT {{host}}/api/notifications/conversations/{{channelId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "level": "All", "mutedUntil": "2026-12-31T00:00:00Z" }
+
+### ===== Admin hệ thống =====
+GET {{host}}/api/admin/users
+Authorization: Bearer {{token}}
+
+###
+POST {{host}}/api/admin/users/USER_ID/lock
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "reason": "Vi phạm nội quy" }
+
+###
+PUT {{host}}/api/admin/settings/AllowUserCreateServers
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "value": "false" }
+
+###
+GET {{host}}/api/admin/audit-logs?take=50
+Authorization: Bearer {{token}}

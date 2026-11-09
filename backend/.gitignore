@@ -1,0 +1,12 @@
+bin/
+obj/
+.vs/
+*.user
+appsettings.Production.json
+appsettings.*.local.json
+
+# Bí mật: chỉ commit .env.example, KHÔNG commit .env
+.env
+
+# File người dùng upload khi chạy bằng dotnet run
+uploads/
