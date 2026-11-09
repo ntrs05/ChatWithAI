@@ -1,0 +1,91 @@
+# Mọi mật khẩu / khóa bí mật đọc từ file .env cùng thư mục (docker compose tự đọc). File này KHÔNG chứa bí mật nào.
+#
+#   Chạy cả MySQL + API:              docker compose up -d --build
+#   Chỉ chạy MySQL (code bằng dotnet): docker compose up -d mysql
+#   Xem log API:                      docker compose logs -f api
+#   Tắt (giữ dữ liệu):                docker compose down
+#   Tắt và XÓA SẠCH dữ liệu:          docker compose down -v
+name: nebula
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: nebula-mysql
+    restart: unless-stopped
+    environment:
+      # ":?" = thiếu biến trong .env thì docker compose dừng và báo lỗi, không chạy với mật khẩu rỗng.
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Thiếu MYSQL_ROOT_PASSWORD trong .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-nebula}
+      MYSQL_USER: ${MYSQL_USER:-nebula}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Thiếu MYSQL_PASSWORD trong .env}
+    # utf8mb4 để lưu đủ tiếng Việt và emoji
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "${MYSQL_HOST_PORT:-3307}:3306"
+    volumes:
+      - nebula-mysql:/var/lib/mysql
+    healthcheck:
+      # Ping qua 127.0.0.1 (TCP) để chỉ báo "sẵn sàng" khi MySQL đã nhận kết nối qua mạng.
+      # $$ = biến được đọc bên trong container, không chèn mật khẩu vào cấu hình compose.
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  api:
+    build: .
+    container_name: nebula-api
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy   # chờ MySQL sẵn sàng rồi mới chạy API
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      # Trong mạng Docker, API gọi MySQL bằng tên service "mysql", cổng nội bộ 3306
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      # Chỉ truyền đúng những biến API cần (không truyền MYSQL_ROOT_PASSWORD vào API)
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-nebula}
+      MYSQL_USER: ${MYSQL_USER:-nebula}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Thiếu MYSQL_PASSWORD trong .env}
+      JWT_KEY: ${JWT_KEY:?Thiếu JWT_KEY trong .env}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-}
+      LIVEKIT_URL: ${LIVEKIT_URL:-}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
+      STORAGE_PATH: /app/uploads
+    ports:
+      - "${API_HOST_PORT:-5000}:8080"
+    volumes:
+      - nebula-uploads:/app/uploads   # file người dùng upload, xóa container không mất
+
+  # Máy chủ SFU cho cuộc gọi nhóm. TÙY CHỌN: chỉ chạy khi thêm --profile sfu
+  #   docker compose --profile sfu up -d
+  # Không bật thì app vẫn gọi thoại được bằng mesh WebRTC (phù hợp phòng ≤ 6 người).
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: nebula-livekit
+    profiles: ["sfu"]
+    restart: unless-stopped
+    environment:
+      # Dùng ":-" (không dùng ":?") vì compose đọc biến cả khi service không chạy; thiếu khóa thì bật --profile sfu sẽ không có khóa hợp lệ.
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-}"
+      LIVEKIT_CONFIG: |
+        port: 7880
+        rtc:
+          tcp_port: 7881
+          port_range_start: 50000
+          port_range_end: 50100
+          use_external_ip: ${LIVEKIT_USE_EXTERNAL_IP:-false}
+    ports:
+      - "7880:7880"                 # tín hiệu (WebSocket) — trình duyệt nối vào đây
+      - "7881:7881"                 # WebRTC qua TCP (dự phòng khi UDP bị chặn)
+      - "50000-50100:50000-50100/udp"   # âm thanh qua UDP
+
+volumes:
+  nebula-mysql:
+  nebula-uploads:
