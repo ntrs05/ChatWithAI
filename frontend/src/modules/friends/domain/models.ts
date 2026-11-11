@@ -1,5 +1,4 @@
 import type { ID } from '@/shared/types';
-
 /** Hồ sơ rút gọn của một người trong danh sách bạn bè. */
 export interface FriendUser {
   id: ID;

@@ -1,11 +1,4 @@
-/**
- * PUBLIC API của module Notifications (hộp thư thông báo).
- * Module khác CHỈ được import từ file này, không import sâu vào bên trong.
- */
-import './events';
-
-export { initNotificationsModule, notificationService } from './module';
-export { useNotificationStore, selectUnread } from './application/notificationStore';
-export type { AppNotification, NotificationTarget } from './domain/models';
-export { targetOf } from './domain/rules';
+// Cửa ra của module notifications (UC06, TV-Notifications phụ trách).
+// Module khác chỉ import những gì export ở đây, muốn cho dùng thêm gì thì thêm vào file này.
+export { initNotificationsModule } from './module';
 export { NotificationsView } from './presentation/NotificationsView';

@@ -4,6 +4,8 @@ using System.Text.Json.Serialization;
 
 namespace Nebula.Shared.Infrastructure;
 
+/// <summary>Mọi thời điểm trong hệ thống là UTC. MySQL trả DateTime kiểu "Unspecified" nên JSON mặc định thiếu chữ "Z",
+/// trình duyệt sẽ hiểu nhầm là giờ địa phương (lệch 7 tiếng ở Việt Nam). Converter này luôn ghi "2026-10-21T17:54:17.2377140Z".</summary>
 public sealed class UtcDateTimeConverter : JsonConverter<DateTime>
 {
     public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)

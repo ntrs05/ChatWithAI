@@ -1,5 +1,4 @@
 import type { ID, UserProfile } from '@/shared/types';
-
 export interface Attachment {
   id: ID;
   name: string;

@@ -1,16 +1,9 @@
-/**
- * PUBLIC API của module Voice (UC07 — Tham gia / Rời kênh Voice, UC08 — Bật / Tắt Micro).
- */
-import './events';
-
-export { initVoiceModule, voiceService } from './module';
-export { useVoiceStore } from './application/voiceStore';
-export type { VoiceParticipant } from './domain/models';
-export {
-  VoiceChannelParticipants,
-  VoiceControls,
-  VoiceStatusPanel,
-  VoiceAudioSink,
-} from './presentation/VoiceWidgets';
-export { VoiceSettingsPanel } from './presentation/VoiceSettingsPanel';
+// Cửa ra của module voice (UC12, TV-Voice phụ trách).
+// Module khác chỉ import những gì export ở đây, muốn cho dùng thêm gì thì thêm vào file này.
+export { initVoiceModule } from './module';
 export { VoiceRoomView } from './presentation/VoiceRoomView';
+export { VoiceSettingsPanel } from './presentation/VoiceSettingsPanel';
+export { VoiceChannelParticipants } from './presentation/VoiceWidgets';
+export { VoiceControls } from './presentation/VoiceWidgets';
+export { VoiceStatusPanel } from './presentation/VoiceWidgets';
+export { VoiceAudioSink } from './presentation/VoiceWidgets';

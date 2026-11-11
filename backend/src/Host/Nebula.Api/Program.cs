@@ -3,6 +3,14 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
+using Nebula.Ai;
+using Nebula.Audit;
+using Nebula.Friends;
+using Nebula.Identity;
+using Nebula.Media;
+using Nebula.Messaging;
+using Nebula.Notifications;
+using Nebula.Organization;
 using Nebula.Shared.Contracts;
 using Nebula.Shared.Infrastructure;
 
@@ -43,6 +51,15 @@ builder.Services.AddExceptionHandler<BadRequestExceptionHandler>();   // JSON sa
 builder.Services.AddOpenApi();
 
 // ===== 3. Đăng ký từng module: Host KHÔNG biết bên trong module có gì =====
+builder.Services
+    .AddIdentityModule(cfg)        // người dùng, đăng nhập, admin hệ thống khóa tài khoản
+    .AddOrganizationModule(cfg)    // server, chủ server/quản trị viên, lời mời, cài đặt hệ thống
+    .AddMessagingModule(cfg)       // kênh, chat 1-1, tin nhắn, realtime
+    .AddNotificationsModule(cfg)   // hộp thư thông báo
+    .AddMediaModule(cfg)           // file, hạn mức dung lượng
+    .AddAuditModule(cfg)           // nhật ký hoạt động cho admin hệ thống
+    .AddFriendsModule(cfg)         // kết bạn
+    .AddAiModule(cfg);             // tóm tắt tin nhắn
 
 // ===== 4. Đăng nhập bằng JWT, mặc định mọi API đều phải đăng nhập =====
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o =>
@@ -66,14 +83,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
                 ctx.Token = token;
             return Task.CompletedTask;
         },
-        // Token còn hạn nhưng tài khoản đã bị admin hệ thống khóa thì vẫn chặn.
-        OnTokenValidated = async ctx =>
-        {
-            var id = Guid.Parse(ctx.Principal!.FindFirst("sub")!.Value);
-            var identity = ctx.HttpContext.RequestServices.GetRequiredService<IIdentityApi>();
-            if (!await identity.IsActiveAsync(id, ctx.HttpContext.RequestAborted))
-                ctx.Fail("Tài khoản bị cấm hoặc không tồn tại.");
-        }
+        // TODO: người làm Identity thêm OnTokenValidated ở đây — token còn hạn mà tài khoản đã bị admin khóa
+        // thì vẫn phải chặn (gọi IIdentityApi.IsActiveAsync). Đợi Identity đăng ký IIdentityApi xong rồi mới thêm.
     };
 });
 builder.Services.AddAuthorization(o =>
@@ -93,13 +104,23 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 // ===== 5. Mỗi module tự khai báo route của mình =====
+IdentityModule.Endpoints().Map(app);
+OrganizationModule.Endpoints().Map(app);
+MessagingModule.Endpoints().Map(app);
+NotificationsModule.Endpoints().Map(app);
+MediaModule.Endpoints().Map(app);
+AuditModule.Endpoints().Map(app);
+FriendsModule.Endpoints().Map(app);
+AiModule.Endpoints().Map(app);
 app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi().AllowAnonymous();   // tài liệu API: /openapi/v1.json
 
-    // Tự tạo / cập nhật bảng cho từng module khi khởi động.
+    // TODO: module nào có DbContext và migration đầu tiên rồi thì thêm một dòng
+    //   await app.Services.Migrate<TênModule>Async();
+    // để lúc chạy dev bảng tự được tạo, khỏi phải gõ lệnh tay.
 }
 
 app.Run();

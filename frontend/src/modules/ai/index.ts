@@ -1,9 +1,5 @@
-/**
- * PUBLIC API của module AI (UC09 — Tóm tắt tin nhắn bằng AI).
- */
-import './events';
-
-export { initAiModule, aiService } from './module';
-export { useAiStore } from './application/aiStore';
-export type { Summary } from './domain/models';
-export { SummarizeButton, SummaryPanel } from './presentation/SummaryPanel';
+// Cửa ra của module ai (UC13, UC14, TV-Ai phụ trách).
+// Module khác chỉ import những gì export ở đây, muốn cho dùng thêm gì thì thêm vào file này.
+export { initAiModule } from './module';
+export { SummarizeButton } from './presentation/SummaryPanel';
+export { SummaryPanel } from './presentation/SummaryPanel';

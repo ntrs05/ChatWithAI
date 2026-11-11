@@ -24,26 +24,4 @@ export interface Summary {
   questions: string[];
 }
 
-export const SUMMARY_COUNTS = [20, 50, 100] as const;
-export const SUMMARY_WINDOWS = [
-  { minutes: 30, label: '30 phút' },
-  { minutes: 60, label: '1 giờ' },
-  { minutes: 180, label: '3 giờ' },
-  { minutes: 1440, label: '24 giờ' },
-] as const;
-export const DEFAULT_SUMMARY_SCOPE: SummaryScope = { mode: 'auto' };
-
-export const sameScope = (a: SummaryScope, b: SummaryScope): boolean =>
-  a.mode === b.mode && (a.mode === 'count' ? a.limit === (b as typeof a).limit : a.mode === 'since' ? a.minutes === (b as typeof a).minutes : true);
-
-/** Chuyển bản tóm tắt thành văn bản thuần để sao chép. */
-export function summaryToText(s: Summary, channelName: string): string {
-  const lines = [`Tóm tắt #${channelName} (${s.scope}, ${s.messageCount} tin nhắn)`, '', s.overview];
-  const section = (title: string, items: string[]) => {
-    if (items.length) lines.push('', title, ...items.map((x) => `• ${x}`));
-  };
-  section('Ý chính:', s.keyPoints);
-  section('Việc cần làm:', s.actionItems);
-  section('Câu hỏi mở:', s.questions);
-  return lines.join('\n');
-}
+// TODO: SUMMARY_COUNTS, SUMMARY_WINDOWS, DEFAULT_SUMMARY_SCOPE, sameScope, summaryToText

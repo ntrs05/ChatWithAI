@@ -1,12 +1,6 @@
-/**
- * PUBLIC API của module Direct (chat 1-1 giữa bạn bè).
- * Module khác CHỈ được import từ file này, không import sâu vào bên trong.
- */
-import './events';
-
-export { initDirectModule, directService } from './module';
-export { useDirectStore, selectUnreadChats } from './application/directStore';
-export type { DirectChat } from './domain/models';
+// Cửa ra của module direct (UC07 (1-1), UC11, TV-Direct phụ trách).
+// Module khác chỉ import những gì export ở đây, muốn cho dùng thêm gì thì thêm vào file này.
+export { initDirectModule } from './module';
 export { DirectList } from './presentation/DirectList';
 export { DirectPage } from './presentation/DirectPage';
 export { MessageButton } from './presentation/MessageButton';

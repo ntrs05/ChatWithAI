@@ -1,15 +1,6 @@
 import type { AppEventBus } from '@/shared/event-bus';
-import { DirectService } from './application/DirectService';
-import { createDirectRepository } from './infrastructure';
 
-let instance: DirectService | null = null;
-
-export function initDirectModule(deps: { bus: AppEventBus }): DirectService {
-  instance = new DirectService(createDirectRepository(), deps.bus);
-  return instance;
-}
-
-export function directService(): DirectService {
-  if (!instance) throw new Error('Module Direct chưa được khởi tạo');
-  return instance;
+// bootstrap.ts gọi hàm này đúng một lần lúc mở app.
+export function initDirectModule(_deps: { bus: AppEventBus }): void {
+  // TODO: tạo repository → service, rồi đăng ký nghe các sự kiện cần thiết trên bus/hub.
 }

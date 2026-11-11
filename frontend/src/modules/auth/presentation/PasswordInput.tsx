@@ -1,22 +1,11 @@
-import { useState, type InputHTMLAttributes } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
-import { Input } from '@/shared/ui';
-
-type Props = InputHTMLAttributes<HTMLInputElement> & { label: string; error?: string };
-
-export function PasswordInput(props: Props) {
-  const [visible, setVisible] = useState(false);
+export function PasswordInput() {
   return (
-    <div className="relative">
-      <Input {...props} type={visible ? 'text' : 'password'} className="pr-11" />
-      <button
-        type="button"
-        onClick={() => setVisible((v) => !v)}
-        aria-label={visible ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-        className="absolute right-2 top-[30px] rounded-lg p-1.5 text-muted hover:text-white"
-      >
-        {visible ? <EyeOff size={18} /> : <Eye size={18} />}
-      </button>
+    <div className="flex min-h-[120px] items-center justify-center p-4">
+      <div className="rounded-xl border border-dashed border-zinc-600 px-6 py-5 text-center text-zinc-400">
+        <p className="font-semibold text-zinc-100">PasswordInput</p>
+        <p className="mt-1 text-sm">Module <b>auth</b> · UC01, UC02, UC03</p>
+        <p className="mt-1 text-xs">chưa làm</p>
+      </div>
     </div>
   );
 }

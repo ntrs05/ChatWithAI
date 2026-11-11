@@ -1,5 +1,4 @@
 import type { UserProfile } from '@/shared/types';
-
 export interface VoiceParticipant {
   channelId: string;
   serverId: string;
@@ -34,9 +33,4 @@ export interface SignalEnvelope {
   data: SignalData;
 }
 
-/**
- * Tránh "glare" (hai bên cùng gửi offer): bên có clientId NHỎ HƠN luôn là bên khởi tạo offer.
- */
-export const isInitiator = (selfId: string, peerId: string) => selfId < peerId;
-
-export const SPEAKING_THRESHOLD = 0.04;
+// TODO: isInitiator, SPEAKING_THRESHOLD

@@ -6,6 +6,7 @@ using Nebula.Shared.Contracts;
 
 namespace Nebula.Shared.Infrastructure;
 
+/// <summary>Hàng đợi trong bộ nhớ. Publish chỉ ghi vào hàng đợi rồi trả về ngay, người gửi không chờ subscriber.</summary>
 internal sealed class EventChannel
 {
     private readonly Channel<IIntegrationEvent> _channel =
@@ -20,6 +21,8 @@ internal sealed class InProcessEventBus(EventChannel channel) : IEventBus
         => channel.Writer.WriteAsync(@event, ct);
 }
 
+/// <summary>Lấy event ra khỏi hàng đợi, tạo scope DI riêng và gọi mọi handler đăng ký cho event đó.
+/// Một handler lỗi không làm hỏng handler khác hay luồng chính.</summary>
 internal sealed class EventDispatcher(EventChannel channel, IServiceScopeFactory scopes, ILogger<EventDispatcher> log)
     : BackgroundService
 {

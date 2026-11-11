@@ -1,5 +1,4 @@
 import type { ID, UserProfile } from '@/shared/types';
-
 /** Mention · DirectMessage · AddedToServer · RemovedFromServer · RoleChanged · JoinRequest · ServerOwner · FriendRequest · FriendAccepted */
 export type NotificationType = string;
 

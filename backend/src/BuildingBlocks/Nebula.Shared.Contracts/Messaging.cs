@@ -1,5 +1,6 @@
 namespace Nebula.Shared.Contracts;
 
+/// <summary>Cổng publish/subscribe. Application của module chỉ biết interface này, không biết cách vận chuyển bên dưới.</summary>
 public interface IEventBus
 {
     ValueTask PublishAsync(IIntegrationEvent @event, CancellationToken ct = default);

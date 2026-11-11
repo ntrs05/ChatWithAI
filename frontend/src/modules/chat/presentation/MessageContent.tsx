@@ -1,73 +1,11 @@
-import { Fragment, type ReactNode } from 'react';
-
-const TOKEN_RE = /(https?:\/\/[^\s]+)|(\*\*[^*]+\*\*)|(`[^`]+`)|(<@[0-9a-fA-F-]{36}>)/g;
-
-/** Hiển thị nội dung: tự nhận link, **in đậm**, `code`, xuống dòng. Không dùng innerHTML (tránh XSS). */
-export function MessageContent({ text, highlight }: { text: string; highlight?: string }) {
+export function MessageContent() {
   return (
-    <>
-      {text.split('\n').map((line, li) => (
-        <Fragment key={li}>
-          {li > 0 && <br />}
-          {renderLine(line, highlight)}
-        </Fragment>
-      ))}
-    </>
+    <div className="flex min-h-[120px] items-center justify-center p-4">
+      <div className="rounded-xl border border-dashed border-zinc-600 px-6 py-5 text-center text-zinc-400">
+        <p className="font-semibold text-zinc-100">MessageContent</p>
+        <p className="mt-1 text-sm">Module <b>chat</b> · UC07, UC08, UC09, UC10, UC17</p>
+        <p className="mt-1 text-xs">chưa làm</p>
+      </div>
+    </div>
   );
-}
-
-function renderLine(line: string, highlight?: string): ReactNode[] {
-  const out: ReactNode[] = [];
-  let last = 0;
-  for (const m of line.matchAll(TOKEN_RE)) {
-    const idx = m.index ?? 0;
-    if (idx > last) out.push(...mark(line.slice(last, idx), highlight, `t${idx}`));
-    const [token, url, bold, code, mention] = m;
-    if (url) {
-      out.push(
-        <a key={`u${idx}`} href={url} target="_blank" rel="noreferrer noopener" className="text-brand-300 hover:underline">
-          {url}
-        </a>,
-      );
-    } else if (bold) {
-      out.push(<strong key={`b${idx}`}>{bold.slice(2, -2)}</strong>);
-    } else if (mention) {
-      // Backend lưu lời nhắc tên dạng <@id>; chưa có danh sách tên ở đây nên hiện chữ chung, tô nổi bật.
-      out.push(
-        <span key={`m${idx}`} className="rounded bg-brand-400/20 px-1 font-medium text-brand-200">
-          @người-dùng
-        </span>,
-      );
-    } else if (code) {
-      out.push(
-        <code key={`c${idx}`} className="rounded bg-ink-950 px-1.5 py-0.5 font-mono text-[0.85em] text-brand-200">
-          {code.slice(1, -1)}
-        </code>,
-      );
-    }
-    last = idx + token.length;
-  }
-  if (last < line.length) out.push(...mark(line.slice(last), highlight, `t${last}`));
-  return out;
-}
-
-function mark(text: string, highlight: string | undefined, key: string): ReactNode[] {
-  if (!highlight) return [text];
-  const lower = text.toLowerCase();
-  const q = highlight.toLowerCase();
-  const parts: ReactNode[] = [];
-  let i = 0;
-  let found = lower.indexOf(q);
-  while (found >= 0 && q) {
-    if (found > i) parts.push(text.slice(i, found));
-    parts.push(
-      <mark key={`${key}-${found}`} className="rounded bg-amber-300/30 px-0.5 text-amber-100">
-        {text.slice(found, found + q.length)}
-      </mark>,
-    );
-    i = found + q.length;
-    found = lower.indexOf(q, i);
-  }
-  if (i < text.length) parts.push(text.slice(i));
-  return parts;
 }

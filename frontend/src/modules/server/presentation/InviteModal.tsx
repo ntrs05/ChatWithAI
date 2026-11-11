@@ -1,54 +1,11 @@
-import { useState, type ReactNode } from 'react';
-import { Check, Copy } from 'lucide-react';
-import { art } from '@/shared/assets';
-import { Button, Modal } from '@/shared/ui';
-import type { Server } from '../domain/models';
-
-interface Props {
-  server: Server;
-  open: boolean;
-  onClose: () => void;
-  /** Slot: nội dung "mời bạn bè của bạn" do module khác (Friends) cung cấp qua composition root. */
-  extra?: ReactNode;
-}
-
-export function InviteModal({ server, open, onClose, extra }: Props) {
-  const [copied, setCopied] = useState(false);
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(server.inviteCode);
-    } catch {
-      /* trình duyệt chặn clipboard — người dùng vẫn đọc được mã */
-    }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-
+export function InviteModal() {
   return (
-    <Modal open={open} onClose={onClose} title={`Mời bạn bè vào ${server.name}`}>
-      {extra && (
-        <section className="mb-5">
-          <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted">Mời bạn bè của bạn</h3>
-          {extra}
-          <p className="mt-2 text-xs text-muted">Bạn bè sẽ nhận được thông báo và tự đồng ý tham gia.</p>
-        </section>
-      )}
-      <section>
-        <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted">Hoặc gửi mã mời</h3>
-        <div className="flex items-center gap-4">
-          <img src={art.megaphone} alt="" className="h-14 w-14" />
-          <p className="text-sm text-slate-300">
-            Họ chọn <b>“+” → Dùng mã mời</b> ở thanh bên trái để tham gia.
-          </p>
-        </div>
-        <div className="mt-3 flex items-center gap-2 rounded-xl border border-ink-600 bg-ink-950/70 p-1.5 pl-4">
-          <span className="flex-1 font-mono text-lg font-bold tracking-[0.3em] text-brand-200">{server.inviteCode}</span>
-          <Button size="sm" onClick={copy} icon={copied ? <Check size={16} /> : <Copy size={16} />}>
-            {copied ? 'Đã chép' : 'Sao chép'}
-          </Button>
-        </div>
-      </section>
-    </Modal>
+    <div className="flex min-h-[120px] items-center justify-center p-4">
+      <div className="rounded-xl border border-dashed border-zinc-600 px-6 py-5 text-center text-zinc-400">
+        <p className="font-semibold text-zinc-100">InviteModal</p>
+        <p className="mt-1 text-sm">Module <b>server</b> · UC05, UC15, UC16, UC18</p>
+        <p className="mt-1 text-xs">chưa làm</p>
+      </div>
+    </div>
   );
 }

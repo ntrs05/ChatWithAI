@@ -29,6 +29,7 @@ public static class HttpExtensions
         });
 }
 
+/// <summary>Mỗi module cài interface này để Host đăng ký route mà không cần biết bên trong module.</summary>
 public interface IModuleEndpoints
 {
     void Map(IEndpointRouteBuilder app);

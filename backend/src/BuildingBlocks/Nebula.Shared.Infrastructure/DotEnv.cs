@@ -27,6 +27,7 @@ public static class DotEnv
         }
     }
 
+    /// <summary>Lấy biến môi trường, không có thì trả giá trị mặc định.</summary>
     public static string Get(string key, string defaultValue = "")
         => Environment.GetEnvironmentVariable(key) is { Length: > 0 } value ? value : defaultValue;
 }

@@ -1,6 +1,2 @@
-import type { AdminRepository } from '../application/ports';
-import { HttpAdminRepository } from './HttpAdminRepository';
-
-export function createAdminRepository(): AdminRepository {
-  return new HttpAdminRepository();
-}
+// TODO: export các repository ra đây cho module.ts dùng.
+export {};

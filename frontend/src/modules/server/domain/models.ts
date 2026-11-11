@@ -1,5 +1,4 @@
 import type { ID, UserProfile } from '@/shared/types';
-
 export interface Server {
   id: ID;
   name: string;

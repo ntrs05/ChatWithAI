@@ -1,11 +1,5 @@
-/**
- * PUBLIC API của module Friends (kết bạn kiểu Discord).
- * Module khác CHỈ được import từ file này, không import sâu vào bên trong.
- */
-import './events';
-
-export { initFriendsModule, friendService } from './module';
-export { useFriendStore, selectIncomingCount } from './application/friendStore';
-export type { Friend, FriendRequest, FriendUser } from './domain/models';
-export { FriendsView } from './presentation/FriendsView';
+// Cửa ra của module friends (UC04, TV-Friends phụ trách).
+// Module khác chỉ import những gì export ở đây, muốn cho dùng thêm gì thì thêm vào file này.
+export { initFriendsModule } from './module';
 export { FriendPicker } from './presentation/FriendPicker';
+export { FriendsView } from './presentation/FriendsView';

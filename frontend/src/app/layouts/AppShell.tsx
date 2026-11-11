@@ -1,152 +1,46 @@
-import { useEffect } from 'react';
-import { matchPath, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Bell, Compass, Home, Menu, ShieldCheck, Users } from 'lucide-react';
-import { UserPanel, useAuthStore } from '@/modules/auth';
-import { DirectList, selectUnreadChats, useDirectStore } from '@/modules/direct';
-import { selectUnread, useNotificationStore } from '@/modules/notifications';
-import { FriendPicker, selectIncomingCount, useFriendStore } from '@/modules/friends';
-import { ChannelSidebar, ServerRail, serverService, useServerStore, type Server } from '@/modules/server';
-import { VoiceAudioSink, VoiceChannelParticipants, VoiceControls, VoiceStatusPanel, useVoiceStore } from '@/modules/voice';
-import { cn } from '@/shared/lib';
+import { NavLink, Outlet } from 'react-router-dom';
 import { Logo } from '@/shared/ui';
-import { useUiStore } from '../uiStore';
-import { SettingsModal } from './SettingsModal';
 
-/**
- * Bố cục ứng dụng. Đây là nơi GHÉP giao diện của nhiều module qua "slot":
- *  - ChannelSidebar (server) nhận VoiceChannelParticipants (voice) qua renderVoiceExtra
- *  - UserPanel (auth) nhận VoiceControls (voice) qua actions
- *  - InviteModal (server) nhận danh sách bạn bè (friends) qua renderInviteExtra
- */
+const NAV = [
+  ['/app', 'Trang chủ'],
+  ['/app/friends', 'Bạn bè'],
+  ['/app/notifications', 'Thông báo'],
+  ['/app/discover', 'Khám phá server'],
+  ['/app/dm/demo', 'Tin nhắn 1-1'],
+  ['/app/demo-server', 'Một server'],
+  ['/app/settings', 'Cài đặt'],
+  ['/app/admin', 'Quản trị'],
+] as const;
+
+// Bố cục chính: thanh server | cột điều hướng | nội dung.
+// Tạm có menu link để bấm thử từng trang; khi ghép thật thì thay bằng ServerRail, DirectList, UserPanel.
 export function AppShell() {
-  const { pathname } = useLocation();
-  const navigate = useNavigate();
-  const sidebarOpen = useUiStore((s) => s.sidebarOpen);
-  const voiceChannel = useVoiceStore((s) => s.channel);
-  const servers = useServerStore((s) => s.servers);
-  const incomingFriends = useFriendStore(selectIncomingCount);
-  const unreadChats = useDirectStore(selectUnreadChats);
-  const unreadNotifications = useNotificationStore(selectUnread);
-  const isAdmin = useAuthStore((s) => !!s.user?.isAdmin);
-
-  const match = matchPath('/app/:segment/*', pathname);
-  const segment = match?.params.segment;
-  const homeViews = ['discover', 'friends', 'settings', 'dm', 'notifications', 'admin'] as const;
-  type View = 'home' | 'server' | (typeof homeViews)[number];
-  const view: View = !segment ? 'home' : (homeViews as readonly string[]).includes(segment) ? (segment as View) : 'server';
-
-  useEffect(() => {
-    useUiStore.setState({ sidebarOpen: false });
-    if (view !== 'server') serverService().clearActive();
-  }, [pathname, view]);
-
-  const closeSidebar = () => useUiStore.setState({ sidebarOpen: false });
-
-  /** "Mời bạn bè": chọn từ danh sách bạn → gửi lời mời vào server (người kia nhận thông báo và tự đồng ý). */
-  const renderInviteExtra = (server: Server) => (
-    <FriendPicker
-      actionLabel="Mời"
-      doneLabel="Đã mời"
-      onAction={(friend) => serverService().inviteFriend(server.id, friend.user.id)}
-    />
-  );
-  const footer = (
-    <>
-      <VoiceStatusPanel
-        serverName={servers.find((s) => s.id === voiceChannel?.serverId)?.name}
-        onOpen={() => voiceChannel && navigate(`/app/${voiceChannel.serverId}/${voiceChannel.id}`)}
-      />
-      <UserPanel actions={<VoiceControls />} />
-    </>
-  );
-
   return (
-    <div className="flex h-[100dvh] overflow-hidden bg-ink-900 text-slate-100">
-      <div
-        className={cn(
-          'fixed inset-y-0 left-0 z-40 flex transition-transform duration-200 md:static md:z-auto md:translate-x-0',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full',
-        )}
-      >
-        <ServerRail
-          view={view}
-          renderInviteExtra={renderInviteExtra}
-          extras={[
-            {
-              key: 'friends',
-              label: 'Bạn bè',
-              active: view === 'friends',
-              badge: incomingFriends + unreadChats,
-              icon: <Users size={22} className="text-emerald-300" />,
-              onClick: () => navigate('/app/friends'),
-            },
-            {
-              key: 'notifications',
-              label: 'Thông báo',
-              active: view === 'notifications',
-              badge: unreadNotifications,
-              icon: <Bell size={22} className="text-amber-300" />,
-              onClick: () => navigate('/app/notifications'),
-            },
-          ]}
-        />
-        {view === 'server' && segment ? (
-          <ChannelSidebar
-            serverId={segment}
-            renderInviteExtra={renderInviteExtra}
-            renderVoiceExtra={(c) => <VoiceChannelParticipants channelId={c.id} />}
-            footer={footer}
-            onNavigate={closeSidebar}
-          />
-        ) : (
-          <aside className="flex w-64 shrink-0 flex-col bg-ink-850">
-            <div className="flex h-14 items-center border-b border-black/20 px-4">
-              <Logo size={26} />
-            </div>
-            <nav className="space-y-1 p-2">
-              {[
-                { to: '/app', label: 'Trang chủ', icon: Home, active: view === 'home' },
-                { to: '/app/friends', label: 'Bạn bè', icon: Users, active: view === 'friends', badge: incomingFriends },
-                { to: '/app/notifications', label: 'Thông báo', icon: Bell, active: view === 'notifications', badge: unreadNotifications },
-                { to: '/app/discover', label: 'Khám phá server', icon: Compass, active: view === 'discover' },
-                ...(isAdmin ? [{ to: '/app/admin', label: 'Quản trị', icon: ShieldCheck, active: view === 'admin', badge: 0 }] : []),
-              ].map((item) => (
-                <button
-                  key={item.to}
-                  onClick={() => navigate(item.to)}
-                  className={cn(
-                    'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition',
-                    item.active ? 'bg-brand-400/15 text-white' : 'text-muted hover:bg-white/5 hover:text-white',
-                  )}
-                >
-                  <item.icon size={19} className={item.active ? 'text-brand-300' : ''} /> {item.label}
-                  {!!item.badge && (
-                    <span className="ml-auto rounded-full bg-nova-500 px-1.5 text-[11px] font-bold leading-[18px] text-white">{item.badge}</span>
-                  )}
-                </button>
-              ))}
-            </nav>
-            <DirectList onNavigate={closeSidebar} />
-            {footer}
-          </aside>
-        )}
-      </div>
-      {sidebarOpen && <div className="fixed inset-0 z-30 bg-ink-950/70 md:hidden" onClick={closeSidebar} />}
+    <div className="flex h-screen bg-zinc-900 text-white">
+      <div className="w-48 shrink-0 border-r border-zinc-800 bg-zinc-950"><Slot name="ServerRail" from="server" /></div>
+      <aside className="flex w-60 flex-col gap-1 border-r border-zinc-800 p-3">
+        <Logo />
+        {NAV.map(([to, label]) => (
+          <NavLink key={to} to={to} end className={({ isActive }) => `rounded px-2 py-1 ${isActive ? 'bg-zinc-700' : 'text-zinc-400 hover:bg-zinc-800'}`}>
+            {label}
+          </NavLink>
+        ))}
+        <Slot name="DirectList" from="direct" />
+        <div className="mt-auto"><Slot name="UserPanel" from="auth" /></div>
+      </aside>
+      <main className="flex flex-1 flex-col overflow-auto"><Outlet /></main>
+    </div>
+  );
+}
 
-      <main className="relative flex min-w-0 flex-1">
-        {view !== 'server' && (
-          <button
-            onClick={() => useUiStore.setState({ sidebarOpen: true })}
-            aria-label="Mở menu"
-            className="absolute left-3 top-3 z-20 rounded-lg bg-ink-950/70 p-2 text-white md:hidden"
-          >
-            <Menu size={20} />
-          </button>
-        )}
-        <Outlet />
-      </main>
-      <VoiceAudioSink />
-      <SettingsModal />
+// Ô giữ chỗ: chỉ ra chỗ này sẽ đặt component nào của module nào.
+function Slot({ name, from, grow = false }: { name: string; from: string; grow?: boolean }) {
+  return (
+    <div className={`flex min-h-[110px] items-center justify-center p-3 ${grow ? 'flex-1' : ''}`}>
+      <div className="rounded-xl border border-dashed border-zinc-600 px-5 py-4 text-center text-zinc-400">
+        <p className="font-semibold text-zinc-100">{name}</p>
+        <p className="mt-1 text-xs">module {from} · chưa ghép</p>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
+/// <summary>Body JSON sai kiểu / thiếu trường là lỗi của người gọi (400), không phải lỗi server (500).</summary>
 internal sealed class BadRequestExceptionHandler : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken ct)

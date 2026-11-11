@@ -1,193 +1,23 @@
-import type { ReactNode } from 'react';
-import { useState } from 'react';
-import { Check, ClipboardList, Copy, HelpCircle, Lightbulb, RefreshCw, Sparkles, X } from 'lucide-react';
-import { art } from '@/shared/assets';
-import { cn, formatDateTime } from '@/shared/lib';
-import { Button, IconButton } from '@/shared/ui';
-import { useAiStore } from '../application/aiStore';
-import { SUMMARY_COUNTS, SUMMARY_WINDOWS, sameScope, summaryToText, type SummaryScope } from '../domain/models';
-import { aiService } from '../module';
-
-/** Nút "Tóm tắt AI" — được gắn vào header của ChatView qua slot. */
-export function SummarizeButton({ channelId }: { channelId: string }) {
-  const open = useAiStore((s) => s.panelOpen && s.channelId === channelId);
+export function SummarizeButton() {
   return (
-    <button
-      onClick={() => (open ? aiService().close() : aiService().open(channelId))}
-      aria-pressed={open}
-      className={cn(
-        'inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm font-semibold transition',
-        open
-          ? 'bg-gradient-to-r from-brand-400 to-aurora-400 text-ink-950'
-          : 'bg-gradient-to-r from-brand-400/15 to-aurora-400/15 text-brand-200 hover:from-brand-400/25 hover:to-aurora-400/25',
-      )}
-    >
-      <Sparkles size={16} />
-      <span className="hidden sm:inline">Tóm tắt AI</span>
-    </button>
-  );
-}
-
-/** UC09 — Bảng hiển thị kết quả tóm tắt từ AI Service. */
-export function SummaryPanel({ channelName }: { channelName: string }) {
-  const { channelId, scope, prompt, status, summary, error } = useAiStore();
-  const [copied, setCopied] = useState(false);
-  if (!channelId) return null;
-  const run = (next: SummaryScope) => void aiService().summarize(channelId, next, prompt ?? undefined);
-
-  const copy = async () => {
-    if (!summary) return;
-    try {
-      await navigator.clipboard.writeText(summaryToText(summary, channelName));
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      /* clipboard bị chặn */
-    }
-  };
-
-  return (
-    <div className="flex h-full flex-col">
-      <div className="relative overflow-hidden border-b border-white/5 bg-gradient-to-br from-brand-500/20 via-ink-800 to-aurora-500/20 px-4 pb-4 pt-3">
-        <img src={art.robot} alt="" className="absolute -right-2 -top-1 h-20 w-20 opacity-90" />
-        <div className="flex items-center justify-between">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-ink-950/60 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-brand-200">
-            <Sparkles size={12} /> AI Service
-          </span>
-          <IconButton label="Đóng" onClick={() => aiService().close()} className="relative">
-            <X size={18} />
-          </IconButton>
-        </div>
-        <h2 className="mt-2 font-display text-lg font-bold text-white">Tóm tắt #{channelName}</h2>
-        {prompt && <p className="relative mt-1 line-clamp-2 text-xs italic text-slate-300">“{prompt}”</p>}
-        <div className="relative mt-3 space-y-2">
-          <div className="flex items-center gap-1.5">
-            <ScopeChip active={sameScope(scope, { mode: 'auto' })} disabled={status === 'loading'} onClick={() => run({ mode: 'auto' })}>
-              Tự động
-            </ScopeChip>
-            <span className="text-[11px] text-muted">AI tự tìm đoạn hội thoại vừa rồi</span>
-            <IconButton label="Tạo lại" className="ml-auto" onClick={() => run(scope)} disabled={status === 'loading'}>
-              <RefreshCw size={16} className={status === 'loading' ? 'animate-spin' : ''} />
-            </IconButton>
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="w-14 text-[11px] text-muted">Số tin</span>
-            {SUMMARY_COUNTS.map((n) => (
-              <ScopeChip key={n} active={sameScope(scope, { mode: 'count', limit: n })} disabled={status === 'loading'} onClick={() => run({ mode: 'count', limit: n })}>
-                {n} tin
-              </ScopeChip>
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="w-14 text-[11px] text-muted">Trong</span>
-            {SUMMARY_WINDOWS.map((w) => (
-              <ScopeChip key={w.minutes} active={sameScope(scope, { mode: 'since', minutes: w.minutes })} disabled={status === 'loading'} onClick={() => run({ mode: 'since', minutes: w.minutes })}>
-                {w.label}
-              </ScopeChip>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-4">
-        {status === 'loading' && (
-          <div className="space-y-4" aria-busy="true">
-            <p className="flex items-center gap-2 text-sm text-brand-200">
-              <Sparkles size={16} className="animate-pulse" /> AI đang đọc cuộc trò chuyện…
-            </p>
-            {[90, 75, 85, 60, 80].map((w, i) => (
-              <div key={i} className="h-3 animate-pulse rounded bg-white/5" style={{ width: `${w}%` }} />
-            ))}
-          </div>
-        )}
-
-        {status === 'error' && (
-          <div className="rounded-xl border border-rose-400/30 bg-rose-500/10 p-4 text-sm text-rose-200">
-            <p className="font-semibold">Không tạo được bản tóm tắt</p>
-            <p className="mt-1">{error}</p>
-            <Button size="sm" variant="secondary" className="mt-3" onClick={() => run(scope)}>
-              Thử lại
-            </Button>
-          </div>
-        )}
-
-        {status === 'done' && summary && (
-          <div className="animate-fade-in space-y-5 text-sm">
-            <p className="text-xs text-muted">
-              {summary.scope} · {summary.messageCount} tin
-              {summary.timeRange && ` · ${formatDateTime(summary.timeRange.from)} → ${formatDateTime(summary.timeRange.to)}`}
-            </p>
-            <p className="leading-relaxed text-slate-200">{summary.overview}</p>
-
-            {summary.participants.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {summary.participants.map((p) => (
-                  <span key={p.name} className="rounded-full bg-white/5 px-2.5 py-1 text-xs text-slate-300">
-                    {p.name} · <b className="text-white">{p.count}</b>
-                  </span>
-                ))}
-              </div>
-            )}
-
-            <Section icon={<Lightbulb size={15} />} title="Ý chính" items={summary.keyPoints} tone="text-amber-300" />
-            <Section icon={<ClipboardList size={15} />} title="Việc cần làm / Mốc thời gian" items={summary.actionItems} tone="text-brand-300" />
-            <Section icon={<HelpCircle size={15} />} title="Câu hỏi mở" items={summary.questions} tone="text-aurora-300" />
-
-            <div className="flex items-center justify-between border-t border-white/5 pt-3 text-[11px] text-muted">
-              <span>
-                {summary.model}
-                <br />
-                {formatDateTime(summary.generatedAt)}
-              </span>
-              <Button size="sm" variant="secondary" onClick={copy} icon={copied ? <Check size={14} /> : <Copy size={14} />}>
-                {copied ? 'Đã chép' : 'Sao chép'}
-              </Button>
-            </div>
-          </div>
-        )}
+    <div className="flex min-h-[120px] items-center justify-center p-4">
+      <div className="rounded-xl border border-dashed border-zinc-600 px-6 py-5 text-center text-zinc-400">
+        <p className="font-semibold text-zinc-100">SummarizeButton</p>
+        <p className="mt-1 text-sm">Module <b>ai</b> · UC13, UC14</p>
+        <p className="mt-1 text-xs">chưa làm</p>
       </div>
     </div>
   );
 }
 
-function Section({ icon, title, items, tone }: { icon: ReactNode; title: string; items: string[]; tone: string }) {
-  if (!items.length) return null;
+export function SummaryPanel() {
   return (
-    <section>
-      <h3 className={cn('mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider', tone)}>
-        {icon} {title}
-      </h3>
-      <ul className="space-y-2">
-        {items.map((item, i) => {
-          const [who, ...rest] = item.split(': ');
-          return (
-            <li key={i} className="rounded-lg bg-white/[0.03] px-3 py-2 leading-relaxed text-slate-300">
-              {rest.length ? (
-                <>
-                  <b className="text-white">{who}:</b> {rest.join(': ')}
-                </>
-              ) : (
-                item
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    </section>
-  );
-}
-
-function ScopeChip({ active, disabled, onClick, children }: { active: boolean; disabled: boolean; onClick: () => void; children: ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={cn(
-        'rounded-lg px-2.5 py-1 text-xs font-semibold transition disabled:opacity-60',
-        active ? 'bg-brand-400 text-ink-950' : 'bg-ink-950/50 text-slate-300 hover:bg-ink-950/80',
-      )}
-    >
-      {children}
-    </button>
+    <div className="flex min-h-[120px] items-center justify-center p-4">
+      <div className="rounded-xl border border-dashed border-zinc-600 px-6 py-5 text-center text-zinc-400">
+        <p className="font-semibold text-zinc-100">SummaryPanel</p>
+        <p className="mt-1 text-sm">Module <b>ai</b> · UC13, UC14</p>
+        <p className="mt-1 text-xs">chưa làm</p>
+      </div>
+    </div>
   );
 }

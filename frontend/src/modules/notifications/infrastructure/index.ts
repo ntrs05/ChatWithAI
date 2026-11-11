@@ -1,7 +1,2 @@
-import type { NotificationRepository } from '../application/ports';
-import { HttpNotificationRepository, registerNotificationsWire } from './HttpNotificationRepository';
-
-export function createNotificationRepository(): NotificationRepository {
-  registerNotificationsWire();
-  return new HttpNotificationRepository();
-}
+// TODO: export các repository ra đây cho module.ts dùng.
+export {};
