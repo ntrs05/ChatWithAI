@@ -8,6 +8,8 @@ COPY src/BuildingBlocks/Nebula.Shared.Kernel/Nebula.Shared.Kernel.csproj        
 COPY src/BuildingBlocks/Nebula.Shared.Contracts/Nebula.Shared.Contracts.csproj             src/BuildingBlocks/Nebula.Shared.Contracts/
 COPY src/BuildingBlocks/Nebula.Shared.Infrastructure/Nebula.Shared.Infrastructure.csproj   src/BuildingBlocks/Nebula.Shared.Infrastructure/
 COPY src/Modules/Identity/Nebula.Identity/Nebula.Identity.csproj                           src/Modules/Identity/Nebula.Identity/
+COPY src/Modules/Organization/Nebula.Organization/Nebula.Organization.csproj                      src/Modules/Organization/Nebula.Organization/
+COPY src/Modules/Friends/Nebula.Friends/Nebula.Friends.csproj                              src/Modules/Friends/Nebula.Friends/
 COPY src/Host/Nebula.Api/Nebula.Api.csproj                                                 src/Host/Nebula.Api/
 RUN dotnet restore src/Host/Nebula.Api/Nebula.Api.csproj
 

@@ -1,7 +1,0 @@
-# Gọi thử API bằng REST Client (VS Code) hoặc Rider/Visual Studio.
-@host = http://localhost:5080
-
-### Kiểm tra API đang chạy
-GET {{host}}/health
-
-# Ai làm xong route nào thì thêm request mẫu vào dưới đây cho cả nhóm test chung.
