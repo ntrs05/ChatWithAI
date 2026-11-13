@@ -1,9 +1,7 @@
 import { create } from 'zustand';
 
-/** Trạng thái đóng/mở của cửa sổ Cài đặt (popup phủ lên ứng dụng như Discord). Module nào cũng mở được: `useSettingsModal.getState().show()`. */
 interface SettingsModalState {
   open: boolean;
-  /** Tab muốn mở sẵn (vd 'voice'). */
   tab: string | null;
   show: (tab?: string) => void;
   hide: () => void;

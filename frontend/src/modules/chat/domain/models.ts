@@ -5,11 +5,9 @@ export interface Attachment {
   size: number;
   mimeType: string;
   kind: 'image' | 'file';
-  /** URL tải về (backend thật). Với backend giả lập, URL được resolve từ IndexedDB. */
   url?: string;
 }
 
-/** Một loại cảm xúc trên một tin nhắn: ai đã thả. */
 export interface Reaction {
   emoji: string;
   count: number;
@@ -24,13 +22,10 @@ export interface Message {
   content: string;
   attachments: Attachment[];
   createdAt: string;
-  /** Đã được sửa lúc nào (null/undefined = chưa sửa). */
   editedAt?: string | null;
-  /** Đã bị xóa: nội dung và tệp bị gỡ, chỉ còn khung "Tin nhắn đã bị xóa". */
   deleted?: boolean;
   pinned?: boolean;
   reactions?: Reaction[];
-  /** Trạng thái phía client (tin nhắn lạc quan đang gửi / gửi lỗi) */
   status?: 'sending' | 'failed';
   nonce?: string;
 }

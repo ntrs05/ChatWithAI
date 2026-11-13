@@ -8,7 +8,6 @@ using Nebula.Shared.Infrastructure;
 
 namespace Nebula.Identity;
 
-/// <summary>Cửa duy nhất của module với Host. Host chỉ gọi 3 hàm này, không biết bên trong có gì.</summary>
 public static class IdentityModule
 {
     public static IServiceCollection AddIdentityModule(this IServiceCollection services, IConfiguration cfg)

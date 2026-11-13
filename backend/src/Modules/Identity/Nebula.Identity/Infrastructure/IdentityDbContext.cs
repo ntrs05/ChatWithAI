@@ -13,14 +13,14 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
     {
         b.Entity<User>(e =>
         {
-            e.ToTable("identity_users");          // tiền tố theo module: cùng 1 DB nhưng không lẫn bảng
+            e.ToTable("identity_users");
             e.HasIndex(x => x.Email).IsUnique();
             e.HasIndex(x => x.GoogleSubject).IsUnique();
             e.Property(x => x.Email).HasMaxLength(255).IsRequired();
             e.Property(x => x.GoogleSubject).HasMaxLength(100).IsRequired();
             e.Property(x => x.PasswordHash).HasMaxLength(200);
             e.Property(x => x.UserCode).HasMaxLength(4).IsRequired();
-            // ID chỉ cần duy nhất trong cùng một tên hiển thị (Tên#0042) — DB bảo đảm, không ai trùng cả tên lẫn ID.
+            // ID chỉ cần duy nhất trong cùng tên
             e.HasIndex(x => new { x.DisplayName, x.UserCode }).IsUnique();
             e.Property(x => x.DisplayName).HasMaxLength(50).IsRequired();
             e.Property(x => x.AvatarUrl).HasMaxLength(500);
@@ -34,7 +34,6 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
             e.Ignore(x => x.HasPassword);
             e.Ignore(x => x.Username);
 
-            // 1-1: mỗi user có đúng một dòng cài đặt, xóa user thì xóa luôn cài đặt
             e.HasOne(x => x.Settings).WithOne().HasForeignKey<UserSettings>(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
         });
         b.Entity<UserSettings>(e =>

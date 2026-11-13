@@ -18,7 +18,7 @@ internal sealed class JwtTokenService(IConfiguration cfg) : ITokenService
         {
             new Claim("sub", user.Id.ToString()),
             new Claim("name", user.DisplayName),
-            new Claim("role", user.SystemRole.ToString())   // "Admin" hoặc "Member"
+            new Claim("role", user.SystemRole.ToString())
         };
         var token = new JwtSecurityToken(
             issuer: cfg["Jwt:Issuer"], audience: cfg["Jwt:Audience"], claims: claims,
@@ -42,7 +42,6 @@ internal sealed class GoogleTokenValidator(IConfiguration cfg) : IGoogleTokenVal
     }
 }
 
-/// <summary>PBKDF2-SHA256, 100.000 vòng, muối ngẫu nhiên 16 byte. Định dạng lưu: v1.{vòng}.{muối}.{băm} (base64).</summary>
 internal sealed class Pbkdf2PasswordHasher : IPasswordHasher
 {
     private const int Iterations = 100_000, SaltSize = 16, KeySize = 32;
@@ -65,7 +64,6 @@ internal sealed class Pbkdf2PasswordHasher : IPasswordHasher
     }
 }
 
-/// <summary>ADMIN_EMAILS trong .env, nhiều email cách nhau bằng dấu phẩy. Ai đăng nhập bằng các email này thì là admin.</summary>
 internal sealed class ConfigAdminPolicy(IConfiguration cfg) : IAdminPolicy
 {
     private readonly string[] _admins = (cfg["AdminEmails"] ?? "")

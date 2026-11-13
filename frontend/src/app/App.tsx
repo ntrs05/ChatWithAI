@@ -5,7 +5,7 @@ import { HomePage } from './pages/HomePage';
 import { LandingPage } from './pages/LandingPage';
 import { ServerPage } from './pages/ServerPage';
 
-// Đủ hết đường dẫn của app rồi. Trang nào module chưa xong thì để ô giữ chỗ, xong module nào thì thay ô đó.
+// route đã đủ, trang nào chưa xong thì để placeholder
 // TODO: auth xong thì bọc thêm GuestOnly / RequireAuth, trang admin chỉ cho admin vào.
 export function App() {
   return (
@@ -32,7 +32,7 @@ export function App() {
   );
 }
 
-// Ô giữ chỗ: chỉ ra chỗ này sẽ đặt component nào của module nào.
+// placeholder, thay bằng component thật khi module xong
 function Slot({ name, from, grow = false }: { name: string; from: string; grow?: boolean }) {
   return (
     <div className={`flex min-h-[110px] items-center justify-center p-3 ${grow ? 'flex-1' : ''}`}>

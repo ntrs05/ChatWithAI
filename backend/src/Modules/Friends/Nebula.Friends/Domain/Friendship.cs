@@ -4,18 +4,12 @@ namespace Nebula.Friends.Domain;
 
 public enum FriendshipStatus { Pending, Accepted }
 
-/// <summary>
-/// Quan hệ bạn bè giữa hai người. Một dòng cho MỖI CẶP (khóa "idNhỏ:idLớn" có chỉ mục UNIQUE nên không bao giờ trùng,
-/// dù ai gửi trước). Luật nghiệp vụ nằm hết trong class này.
-/// </summary>
 public sealed class Friendship : Entity
 {
     private Friendship() { }
 
     public string PairKey { get; private set; } = "";
-    /// <summary>Người gửi lời mời.</summary>
     public Guid RequesterId { get; private set; }
-    /// <summary>Người nhận lời mời.</summary>
     public Guid AddresseeId { get; private set; }
     public FriendshipStatus Status { get; private set; }
     public DateTime? AcceptedAt { get; private set; }
@@ -36,7 +30,6 @@ public sealed class Friendship : Entity
         });
     }
 
-    /// <summary>Chỉ NGƯỜI NHẬN mới chấp nhận được lời mời đang chờ.</summary>
     public Result Accept(Guid userId)
     {
         if (IsAccepted) return Result.Failure(Error.Conflict("Friend.AlreadyFriends", "Hai bạn đã là bạn bè."));
@@ -46,7 +39,6 @@ public sealed class Friendship : Entity
         return Result.Success();
     }
 
-    /// <summary>Ai được xóa dòng này: lời mời đang chờ thì cả hai bên (người nhận từ chối, người gửi hủy); đã là bạn thì cả hai (hủy kết bạn).</summary>
     public Result EnsureCanEnd(Guid userId)
         => Involves(userId) ? Result.Success() : Result.Failure(Error.Forbidden("Friend.NotInvolved", "Bạn không thuộc quan hệ này."));
 }

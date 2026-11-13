@@ -5,7 +5,6 @@ import { cn, uid } from '../lib';
 
 type Toast = AppEvents['ui.toast'] & { id: string };
 
-/** Subscriber của sự kiện 'ui.toast' — bất kỳ module nào cũng có thể publish thông báo. */
 export function Toaster() {
   const [items, setItems] = useState<Toast[]>([]);
 

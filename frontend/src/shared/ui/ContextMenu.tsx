@@ -6,22 +6,17 @@ import { cn } from '../lib';
 export interface MenuItem {
   key: string;
   label: ReactNode;
-  /** Dòng chữ nhỏ bên dưới nhãn (vd: mức thông báo hiện tại). */
   hint?: string;
   icon?: ReactNode;
   danger?: boolean;
   disabled?: boolean;
-  /** Có giá trị (true/false) → hiện ô tích (kiểu radio / checkbox). */
   checked?: boolean;
-  /** Kẻ một đường ngăn phía trên mục này. */
   separatorBefore?: boolean;
   onSelect?: () => void;
-  /** Có mục con → mở menu con khi rê chuột / bấm. */
   children?: MenuItem[];
 }
 
 interface ContextMenuProps {
-  /** Toạ độ con trỏ chuột (clientX / clientY). */
   x: number;
   y: number;
   items: MenuItem[];
@@ -30,7 +25,6 @@ interface ContextMenuProps {
 
 const MARGIN = 8;
 
-/** Một bảng menu; tự dịch vào trong khung nhìn nếu bị tràn mép màn hình. */
 function MenuPanel({
   x,
   y,
@@ -42,7 +36,6 @@ function MenuPanel({
   y: number;
   items: MenuItem[];
   onClose: () => void;
-  /** Với menu con: hình chữ nhật của mục cha, để mở sang trái nếu bên phải hết chỗ. */
   anchor?: DOMRect;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -124,10 +117,6 @@ function MenuPanel({
   );
 }
 
-/**
- * Menu chuột phải (kiểu Discord): hiện tại vị trí con trỏ, có menu con, ô tích, mục nguy hiểm màu đỏ.
- * Đóng khi bấm ra ngoài, nhấn Esc, cuộn, đổi kích thước cửa sổ hoặc chọn một mục.
- */
 export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
   useEffect(() => {
     const close = () => onClose();

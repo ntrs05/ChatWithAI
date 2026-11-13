@@ -5,7 +5,6 @@ namespace Nebula.Identity.Application;
 
 public sealed record LockUserRequest(string Reason);
 
-/// <summary>Việc của admin hệ thống với tài khoản người dùng. Endpoint đã chặn bằng policy "Admin".</summary>
 public sealed class AdminService(IUserRepository users, IIdentityUnitOfWork uow, IEventBus bus)
 {
     private static readonly Error NotFound = Error.NotFound("User.NotFound", "Không tìm thấy người dùng.");
@@ -20,7 +19,7 @@ public sealed class AdminService(IUserRepository users, IIdentityUnitOfWork uow,
         var r = user.Lock(actorId, reason);
         if (r.IsFailure) return r;
         await uow.SaveChangesAsync(ct);
-        // Messaging ngắt kết nối realtime, Audit ghi nhật ký.
+        // Messaging ngắt realtime, Audit ghi log
         await bus.PublishAsync(new UserLocked(userId, actorId, reason), ct);
         return Result.Success();
     }

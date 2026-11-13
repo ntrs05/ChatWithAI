@@ -4,7 +4,6 @@ using Nebula.Shared.Contracts;
 
 namespace Nebula.Identity.Infrastructure;
 
-/// <summary>Cổng công khai để module khác hỏi Identity. Cache 15 giây vì được gọi ở MỌI request (kiểm tra tài khoản bị khóa chưa).</summary>
 internal sealed class IdentityApi(IUserRepository users, IMemoryCache cache) : IIdentityApi
 {
     public Task<UserSummary?> GetUserAsync(Guid userId, CancellationToken ct = default)

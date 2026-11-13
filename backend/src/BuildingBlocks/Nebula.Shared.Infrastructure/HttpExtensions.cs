@@ -7,11 +7,9 @@ namespace Nebula.Shared.Infrastructure;
 
 public static class HttpExtensions
 {
-    /// <summary>Lấy Id người dùng từ claim "sub" của JWT.</summary>
     public static Guid GetUserId(this ClaimsPrincipal user)
         => Guid.TryParse(user.FindFirstValue("sub"), out var id) ? id : throw new UnauthorizedAccessException();
 
-    /// <summary>Đổi Result thành HTTP response thống nhất cho mọi module.</summary>
     public static IResult ToHttp(this Result result, Func<IResult>? onSuccess = null)
         => result.IsSuccess ? (onSuccess?.Invoke() ?? Results.NoContent()) : Problem(result.Error);
 
@@ -29,7 +27,6 @@ public static class HttpExtensions
         });
 }
 
-/// <summary>Mỗi module cài interface này để Host đăng ký route mà không cần biết bên trong module.</summary>
 public interface IModuleEndpoints
 {
     void Map(IEndpointRouteBuilder app);

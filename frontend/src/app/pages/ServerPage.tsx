@@ -1,4 +1,3 @@
-// Trang một server: danh sách kênh | chat hoặc voice | thành viên.
 // TODO: server/chat/voice/ai xong thì thay từng ô bằng component thật, đọc channelId trên URL để biết mở chat hay voice.
 export function ServerPage() {
   return (
@@ -14,7 +13,7 @@ export function ServerPage() {
   );
 }
 
-// Ô giữ chỗ: chỉ ra chỗ này sẽ đặt component nào của module nào.
+// placeholder, thay bằng component thật khi module xong
 function Slot({ name, from, grow = false }: { name: string; from: string; grow?: boolean }) {
   return (
     <div className={`flex min-h-[110px] items-center justify-center p-3 ${grow ? 'flex-1' : ''}`}>

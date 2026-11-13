@@ -1,7 +1,6 @@
 import { cn } from '../lib';
 import { config } from '../config';
 
-/** Logo tự thiết kế: bong bóng chat + sóng âm (chat & voice). */
 export function LogoMark({ size = 32, className }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" className={className} aria-hidden>

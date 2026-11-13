@@ -12,8 +12,7 @@ const NAV = [
   ['/app/admin', 'Quản trị'],
 ] as const;
 
-// Bố cục chính: thanh server | cột điều hướng | nội dung.
-// Tạm có menu link để bấm thử từng trang; khi ghép thật thì thay bằng ServerRail, DirectList, UserPanel.
+// menu tạm, sau thay bằng ServerRail, DirectList, UserPanel
 export function AppShell() {
   return (
     <div className="flex h-screen bg-zinc-900 text-white">
@@ -33,7 +32,7 @@ export function AppShell() {
   );
 }
 
-// Ô giữ chỗ: chỉ ra chỗ này sẽ đặt component nào của module nào.
+// placeholder, thay bằng component thật khi module xong
 function Slot({ name, from, grow = false }: { name: string; from: string; grow?: boolean }) {
   return (
     <div className={`flex min-h-[110px] items-center justify-center p-3 ${grow ? 'flex-1' : ''}`}>

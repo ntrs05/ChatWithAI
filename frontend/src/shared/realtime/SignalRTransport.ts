@@ -2,15 +2,6 @@ import { HubConnectionBuilder, HubConnectionState, LogLevel, type HubConnection 
 import type { RealtimeEnvelope, RealtimeState, RealtimeTransport } from './RealtimeTransport';
 import { wire } from './wire';
 
-/**
- * Transport dùng SignalR cho backend Nebula (ASP.NET Core).
- *
- * Khác Socket.IO: server Nebula tự đẩy sự kiện tới ĐÚNG những người liên quan (theo user id), nên client
- * không cần đăng ký topic → subscribe/unsubscribe chỉ là no-op. Việc đổi tên và giải mã sự kiện do `wire` đảm nhiệm.
- *
- *   server → client : mỗi sự kiện là một client method ("MessageReceived", "VoiceJoined"…)
- *   client → server : hub.send("Typing", channelId) | hub.send("VoiceSignal", {...})
- */
 export class SignalRTransport implements RealtimeTransport {
   private connection: HubConnection | null = null;
   private eventHandlers = new Set<(e: RealtimeEnvelope) => void>();

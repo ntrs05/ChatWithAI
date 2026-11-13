@@ -4,8 +4,6 @@ using Nebula.Shared.Kernel;
 
 namespace Nebula.Identity.Application;
 
-/// <summary>Messaging báo "có người vừa mở/đóng kết nối realtime", Identity cập nhật trạng thái online/offline.
-/// Người đang để "Không làm phiền" vẫn giữ nguyên trạng thái đó.</summary>
 public sealed class UserConnectedHandler(IUserRepository users, IIdentityUnitOfWork uow, IEventBus bus) : IEventHandler<UserConnected>
 {
     public async Task HandleAsync(UserConnected e, CancellationToken ct)
@@ -24,7 +22,7 @@ public sealed class UserDisconnectedHandler(IUserRepository users, IIdentityUnit
     {
         var user = await users.GetByIdAsync(e.UserId, ct);
         if (user is null || user.Status == UserStatus.DoNotDisturb) return;
-        // Lưu ý: Ban() đã đặt Offline; SetStatus bị từ chối khi bị cấm nên bỏ qua im lặng.
+        // bị ban thì SetStatus từ chối, bỏ qua
         if (user.SetStatus(UserStatus.Offline).IsFailure) return;
         await uow.SaveChangesAsync(ct);
         await bus.PublishAsync(new UserStatusChanged(e.UserId, nameof(UserStatus.Offline)), ct);

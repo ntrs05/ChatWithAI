@@ -1,13 +1,6 @@
 import type { AppEventBus, AppEvents } from '../event-bus';
 import type { RealtimeEnvelope, RealtimeState, RealtimeTransport } from './RealtimeTransport';
 
-/**
- * Cầu nối Pub-Sub: Transport (mạng) ⇄ EventBus (trong ứng dụng).
- *
- * Mọi sự kiện nhận từ server được publish lại lên EventBus với đúng tên sự kiện,
- * nên module chỉ cần `bus.subscribe('chat.message.created', …)` là nhận được cả
- * sự kiện do chính tab này tạo ra lẫn sự kiện từ người dùng khác.
- */
 export class RealtimeHub {
   private refCount = new Map<string, number>();
   private offEvent: (() => void) | null = null;
@@ -31,7 +24,7 @@ export class RealtimeHub {
     this.offEvent = this.transport.onEvent((e: RealtimeEnvelope) => {
       this.bus.publish(e.type as keyof AppEvents, e.payload as never);
     });
-    // connect() reset danh sách topic một cách đồng bộ → đăng ký lại ngay sau đó
+    // connect() reset topic nên đăng ký lại
     const connecting = this.transport.connect(token);
     for (const topic of this.refCount.keys()) this.transport.subscribe(topic);
     await connecting;
@@ -44,7 +37,6 @@ export class RealtimeHub {
     this.transport.disconnect();
   }
 
-  /** Đăng ký topic (đếm tham chiếu). Trả về hàm huỷ đăng ký. */
   subscribe(topic: string): () => void {
     const n = this.refCount.get(topic) ?? 0;
     this.refCount.set(topic, n + 1);

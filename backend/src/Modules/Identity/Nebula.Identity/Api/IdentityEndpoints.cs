@@ -21,7 +21,6 @@ internal sealed class IdentityEndpoints : IModuleEndpoints
         app.MapPost("/api/auth/login", async (LoginRequest req, AuthService auth, CancellationToken ct)
             => (await auth.LoginAsync(req, ct)).ToHttp()).AllowAnonymous();
 
-        // ---- Hồ sơ của chính mình ----
         var me = app.MapGroup("/api/users/me").RequireAuthorization();
         me.MapGet("", async (HttpContext c, ProfileService s, CancellationToken ct)
             => (await s.GetAsync(c.User.GetUserId(), ct)).ToHttp());
@@ -34,16 +33,13 @@ internal sealed class IdentityEndpoints : IModuleEndpoints
         me.MapPut("settings", async (UserSettingsRequest req, HttpContext c, ProfileService s, CancellationToken ct)
             => (await s.UpdateSettingsAsync(c.User.GetUserId(), req, ct)).ToHttp());
 
-        // ---- Người dùng khác ----
         var users = app.MapGroup("/api/users").RequireAuthorization();
-        // Chỉ admin hệ thống được tìm người theo tên/email. Người dùng thường PHẢI biết cả tên lẫn ID mới kết bạn được (xem /api/friends/requests/by-tag)
-        // nên không cho dò danh sách người dùng.
+        // user thường không được dò danh sách, phải biết cả tên + ID
         users.MapGet("search", async (string? q, int? take, ProfileService s, CancellationToken ct)
             => Results.Ok(await s.SearchAsync(q, take ?? 20, ct))).RequireAuthorization("Admin");
         users.MapGet("{id:guid}", async (Guid id, ProfileService s, CancellationToken ct)
             => (await s.GetPublicAsync(id, ct)).ToHttp());
 
-        // ---- Admin hệ thống quản lý tài khoản ----
         var admin = app.MapGroup("/api/admin/users").RequireAuthorization("Admin");
         admin.MapGet("", async (string? q, bool? locked, AdminService s, CancellationToken ct)
             => Results.Ok(await s.ListAsync(q, locked, ct)));

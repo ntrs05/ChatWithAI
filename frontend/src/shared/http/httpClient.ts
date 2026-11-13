@@ -9,7 +9,6 @@ interface RequestOptions {
   body?: unknown;
   query?: Query;
   signal?: AbortSignal;
-  /** Cho phép request tiếp tục khi đóng tab (dùng khi rời kênh thoại) */
   keepalive?: boolean;
 }
 
@@ -37,7 +36,6 @@ async function parseError(res: Response): Promise<ApiError> {
   return new ApiError(message, res.status, code);
 }
 
-/** HTTP client tối giản cho REST API (tầng hạ tầng). */
 export async function http<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const token = tokenStore.get();
   const res = await fetch(buildUrl(path, opts.query), {
@@ -61,12 +59,10 @@ export async function http<T>(path: string, opts: RequestOptions = {}): Promise<
 }
 
 let unauthorizedHandler: (() => void) | null = null;
-/** Đăng ký hàm chạy khi server trả 401 trong lúc đang đăng nhập (đặt ở composition root). */
 export function onUnauthorized(handler: () => void): void {
   unauthorizedHandler = handler;
 }
 
-/** Upload multipart có báo tiến độ (fetch chưa hỗ trợ upload progress nên dùng XHR). */
 export function uploadWithProgress<T>(
   path: string,
   form: FormData,

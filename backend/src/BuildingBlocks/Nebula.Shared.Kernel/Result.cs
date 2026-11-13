@@ -2,7 +2,6 @@ namespace Nebula.Shared.Kernel;
 
 public enum ErrorType { Validation, NotFound, Forbidden, Conflict }
 
-/// <summary>Lỗi nghiệp vụ có chủ đích (khác với exception là lỗi bất ngờ).</summary>
 public sealed record Error(string Code, string Message, ErrorType Type = ErrorType.Validation)
 {
     public static readonly Error None = new("", "");
@@ -11,7 +10,6 @@ public sealed record Error(string Code, string Message, ErrorType Type = ErrorTy
     public static Error Conflict(string code, string msg) => new(code, msg, ErrorType.Conflict);
 }
 
-/// <summary>Kết quả của một thao tác nghiệp vụ: thành công hoặc thất bại kèm Error. Tránh ném exception cho lỗi "dự đoán được".</summary>
 public class Result
 {
     protected Result(bool ok, Error error) { IsSuccess = ok; Error = error; }

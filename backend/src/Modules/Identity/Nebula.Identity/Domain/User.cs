@@ -4,20 +4,15 @@ namespace Nebula.Identity.Domain;
 
 public enum UserStatus { Offline, Online, Idle, DoNotDisturb }
 
-/// <summary>Quyền ở cấp toàn hệ thống. Admin = admin hệ thống, quản lý toàn bộ app.</summary>
 public enum SystemRole { Member, Admin }
 
-/// <summary>Người dùng. Mọi quy tắc về hồ sơ, trạng thái, khóa tài khoản nằm TRONG class này.</summary>
 public sealed class User : Entity
 {
     private User() { } // EF Core
 
     public string Email { get; private set; } = "";
     public string GoogleSubject { get; private set; } = "";
-    /// <summary>ID công khai 4 chữ số "0000"–"9999" (như Discord: Tên#0042). Duy nhất TRONG CÙNG MỘT TÊN HIỂN THỊ — hai người trùng tên
-    /// thì khác ID. Muốn kết bạn phải biết cả tên hiển thị lẫn ID này (khác Id Guid nội bộ).</summary>
     public string UserCode { get; private set; } = "";
-    /// <summary>Null nếu tài khoản chỉ đăng nhập bằng Google. Chỉ lưu bản băm, không bao giờ lưu mật khẩu thật.</summary>
     public string? PasswordHash { get; private set; }
     public string DisplayName { get; private set; } = "";
     public string? AvatarUrl { get; private set; }
@@ -34,7 +29,6 @@ public sealed class User : Entity
     public DateTime? LockedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; } = DateTime.UtcNow;
 
-    /// <summary>Cài đặt cá nhân, bảng riêng quan hệ 1-1.</summary>
     public UserSettings Settings { get; private set; } = null!;
 
     public bool IsAdmin => SystemRole == SystemRole.Admin;
@@ -43,7 +37,6 @@ public sealed class User : Entity
     public const int UserCodeLength = 4;
     public bool HasUserCode => UserCode.Length == UserCodeLength && UserCode.All(char.IsAsciiDigit);
 
-    /// <summary>Sinh một ID ngẫu nhiên 0–9999, luôn đủ 4 chữ số ("0042"). Người gọi phải kiểm tra trùng (cùng tên) rồi mới gán.</summary>
     public static string NewUserCode()
         => System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10_000).ToString("D4");
 
@@ -52,10 +45,8 @@ public sealed class User : Entity
         if (code.Length != UserCodeLength || !code.All(char.IsAsciiDigit)) throw new ArgumentException("ID phải gồm 4 chữ số (0000–9999).", nameof(code));
         UserCode = code;
     }
-    /// <summary>Tên rút gọn @username = phần trước @ của email.</summary>
     public string Username => Email.Split('@')[0];
 
-    /// <summary>Đăng ký bằng email + mật khẩu (đã băm). GoogleSubject lấy dạng "local:{id}" để vẫn thỏa chỉ mục duy nhất.</summary>
     public static User RegisterWithPassword(string email, string displayName, string? avatarUrl, string passwordHash, SystemRole role)
     {
         var user = Register(email, "", displayName, avatarUrl, role);
@@ -64,7 +55,6 @@ public sealed class User : Entity
         return user;
     }
 
-    /// <summary>Người dùng Google đặt thêm mật khẩu, hoặc đổi mật khẩu.</summary>
     public void SetPasswordHash(string passwordHash)
     {
         PasswordHash = passwordHash;
@@ -131,12 +121,10 @@ public sealed class User : Entity
     }
 }
 
-/// <summary>Cài đặt cá nhân của người dùng (1-1 với User, khóa chính chính là UserId).</summary>
 public sealed class UserSettings
 {
     private UserSettings() { }
     public Guid UserId { get; private set; }
-    /// <summary>Tắt thì người khác không thấy "đang gõ..." của mình.</summary>
     public bool TypingIndicatorEnabled { get; private set; } = true;
 
     public static UserSettings CreateDefault(Guid userId) => new() { UserId = userId };

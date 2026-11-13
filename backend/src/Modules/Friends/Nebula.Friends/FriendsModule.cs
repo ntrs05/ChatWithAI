@@ -8,7 +8,6 @@ using Nebula.Shared.Infrastructure;
 
 namespace Nebula.Friends;
 
-/// <summary>Module bạn bè: lời mời kết bạn, danh sách bạn. Chỉ nói chuyện với module khác qua event và IIdentityApi.</summary>
 public static class FriendsModule
 {
     public static IServiceCollection AddFriendsModule(this IServiceCollection services, IConfiguration cfg)

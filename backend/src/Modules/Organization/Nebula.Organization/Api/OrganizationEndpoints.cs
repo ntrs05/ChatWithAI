@@ -1,70 +1,87 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Nebula.Organization.Application;
+using Nebula.Organization.Domain;
 using Nebula.Shared.Infrastructure;
 
 namespace Nebula.Organization.Api;
 
-// TODO: request gồm (Guid UserId)
-public sealed record UserIdRequest
-{
-}
-
-// TODO: request gồm (Guid UserId, string? Reason)
-public sealed record ServerBanRequest
-{
-}
-
-// TODO: request gồm (ServerRole Role)
-public sealed record ServerRoleRequest
-{
-}
-
-// TODO: request gồm (bool Accept)
-public sealed record RespondRequest
-{
-}
-
-// TODO: request gồm (string Value)
-public sealed record SettingRequest
-{
-}
-
-// TODO: request gồm (string Code)
-public sealed record JoinCodeRequest
-{
-}
+public sealed record UserIdRequest(Guid UserId);
+public sealed record ServerBanRequest(Guid UserId, string? Reason);
+public sealed record ServerRoleRequest(ServerRole Role);
+public sealed record RespondRequest(bool Accept);
+public sealed record SettingRequest(string Value);
+public sealed record JoinCodeRequest(string Code);
 
 internal sealed class OrganizationEndpoints : IModuleEndpoints
 {
     public void Map(IEndpointRouteBuilder app)
     {
-        // TODO: làm mấy route dưới, nghiệp vụ xem đặc tả UC05, UC15, UC16, UC18, UC20, UC21.
-        // Nhớ gắn RequireAuthorization() cho route cần đăng nhập, route admin thì RequireAuthorization("Admin").
-        //   POST   /api/servers
-        //   GET    /api/servers
-        //   GET    /api/servers/joinable
-        //   POST   /api/servers/join-by-code
-        //   POST   /api/servers/{id:guid}/join
-        //   GET    /api/servers/{id:guid}/members
-        //   GET    /api/servers/{id:guid}
-        //   PUT    /api/servers/{id:guid}
-        //   DELETE /api/servers/{id:guid}
-        //   POST   /api/servers/{id:guid}/leave
-        //   POST   /api/servers/{id:guid}/members
-        //   DELETE /api/servers/{id:guid}/members/{userId:guid}
-        //   PUT    /api/servers/{id:guid}/members/{userId:guid}/role
-        //   PUT    /api/servers/{id:guid}/owner
-        //   GET    /api/servers/{id:guid}/bans
-        //   POST   /api/servers/{id:guid}/bans
-        //   DELETE /api/servers/{id:guid}/bans/{userId:guid}
-        //   POST   /api/servers/{id:guid}/invites
-        //   POST   /api/servers/{id:guid}/join-requests
-        //   GET    /api/servers/{id:guid}/join-requests
-        //   GET    /api/join-requests/invitations
-        //   GET    /api/join-requests/mine
-        //   POST   /api/join-requests/{id:guid}/respond
-        //   POST   /api/join-requests/{id:guid}/cancel
-        //   GET    /api/admin/servers
-        //   GET    /api/admin/settings
-        //   PUT    /api/admin/settings/{key}
+        var g = app.MapGroup("/api/servers").RequireAuthorization();
+
+        // ---- Server ----
+        g.MapPost("", async (CreateServerRequest r, HttpContext c, ServerService s, CancellationToken ct)
+            => (await s.CreateAsync(c.User.GetUserId(), r, ct)).ToHttp());
+        g.MapGet("", async (HttpContext c, ServerService s, CancellationToken ct)
+            => Results.Ok(await s.ListMineAsync(c.User.GetUserId(), ct)));
+        g.MapGet("joinable", async (string? q, HttpContext c, ServerService s, CancellationToken ct)
+            => Results.Ok(await s.ListJoinableAsync(c.User.GetUserId(), q, ct)));
+        g.MapPost("join-by-code", async (JoinCodeRequest r, HttpContext c, ServerService s, CancellationToken ct)
+            => (await s.JoinByCodeAsync(c.User.GetUserId(), r.Code, ct)).ToHttp());
+        g.MapPost("{id:guid}/join", async (Guid id, HttpContext c, ServerService s, CancellationToken ct)
+            => (await s.JoinOpenAsync(c.User.GetUserId(), id, ct)).ToHttp());
+        g.MapGet("{id:guid}/members", async (Guid id, HttpContext c, ServerService s, CancellationToken ct)
+            => (await s.ListMembersAsync(c.User.GetUserId(), id, ct)).ToHttp());
+        g.MapGet("{id:guid}", async (Guid id, HttpContext c, ServerService s, CancellationToken ct)
+            => (await s.DetailAsync(c.User.GetUserId(), id, ct)).ToHttp());
+        g.MapPut("{id:guid}", async (Guid id, UpdateServerRequest r, HttpContext c, ServerService s, CancellationToken ct)
+            => (await s.UpdateAsync(c.User.GetUserId(), id, r, ct)).ToHttp());
+        g.MapDelete("{id:guid}", async (Guid id, HttpContext c, ServerService s, CancellationToken ct)
+            => (await s.DeleteAsync(c.User.GetUserId(), id, ct)).ToHttp());
+        g.MapPost("{id:guid}/leave", async (Guid id, HttpContext c, ServerService s, CancellationToken ct)
+            => (await s.LeaveAsync(c.User.GetUserId(), id, ct)).ToHttp());
+
+        // ---- Thành viên, phân quyền, cấm ----
+        g.MapPost("{id:guid}/members", async (Guid id, UserIdRequest r, HttpContext c, ServerService s, CancellationToken ct)
+            => (await s.AddMemberAsync(c.User.GetUserId(), id, r.UserId, ct)).ToHttp());
+        g.MapDelete("{id:guid}/members/{userId:guid}", async (Guid id, Guid userId, HttpContext c, ServerService s, CancellationToken ct)
+            => (await s.RemoveMemberAsync(c.User.GetUserId(), id, userId, ct)).ToHttp());
+        g.MapPut("{id:guid}/members/{userId:guid}/role", async (Guid id, Guid userId, ServerRoleRequest r, HttpContext c, ServerService s, CancellationToken ct)
+            => (await s.SetRoleAsync(c.User.GetUserId(), id, userId, r.Role, ct)).ToHttp());
+        g.MapPut("{id:guid}/owner", async (Guid id, UserIdRequest r, HttpContext c, ServerService s, CancellationToken ct)
+            => (await s.AssignOwnerAsync(c.User.GetUserId(), id, r.UserId, ct)).ToHttp());
+        g.MapGet("{id:guid}/bans", async (Guid id, HttpContext c, ServerService s, CancellationToken ct)
+            => (await s.ListBansAsync(c.User.GetUserId(), id, ct)).ToHttp());
+        g.MapPost("{id:guid}/bans", async (Guid id, ServerBanRequest r, HttpContext c, ServerService s, CancellationToken ct)
+            => (await s.BanAsync(c.User.GetUserId(), id, r.UserId, r.Reason, ct)).ToHttp());
+        g.MapDelete("{id:guid}/bans/{userId:guid}", async (Guid id, Guid userId, HttpContext c, ServerService s, CancellationToken ct)
+            => (await s.UnbanAsync(c.User.GetUserId(), id, userId, ct)).ToHttp());
+
+        // ---- Mời vào server / xin vào server ----
+        g.MapPost("{id:guid}/invites", async (Guid id, UserIdRequest r, HttpContext c, JoinRequestService s, CancellationToken ct)
+            => (await s.InviteAsync(c.User.GetUserId(), id, r.UserId, ct)).ToHttp());
+        g.MapPost("{id:guid}/join-requests", async (Guid id, HttpContext c, JoinRequestService s, CancellationToken ct)
+            => (await s.RequestToJoinAsync(c.User.GetUserId(), id, ct)).ToHttp());
+        g.MapGet("{id:guid}/join-requests", async (Guid id, HttpContext c, JoinRequestService s, CancellationToken ct)
+            => (await s.ListForServerAsync(c.User.GetUserId(), id, ct)).ToHttp());
+
+        var jr = app.MapGroup("/api/join-requests").RequireAuthorization();
+        jr.MapGet("invitations", async (HttpContext c, JoinRequestService s, CancellationToken ct)
+            => Results.Ok(await s.ListInvitationsAsync(c.User.GetUserId(), ct)));
+        jr.MapGet("mine", async (HttpContext c, JoinRequestService s, CancellationToken ct)
+            => Results.Ok(await s.ListMineAsync(c.User.GetUserId(), ct)));
+        jr.MapPost("{id:guid}/respond", async (Guid id, RespondRequest r, HttpContext c, JoinRequestService s, CancellationToken ct)
+            => (await s.RespondAsync(c.User.GetUserId(), id, r.Accept, ct)).ToHttp());
+        jr.MapPost("{id:guid}/cancel", async (Guid id, HttpContext c, JoinRequestService s, CancellationToken ct)
+            => (await s.CancelAsync(c.User.GetUserId(), id, ct)).ToHttp());
+
+        // ---- Admin hệ thống ----
+        var admin = app.MapGroup("/api/admin").RequireAuthorization("Admin");
+        admin.MapGet("servers", async (string? q, HttpContext c, ServerService s, CancellationToken ct)
+            => Results.Ok(await s.ListAllAsync(c.User.GetUserId(), q, ct)));
+        admin.MapGet("settings", async (SettingsService s, CancellationToken ct) => Results.Ok(await s.ListAsync(ct)));
+        admin.MapPut("settings/{key}", async (string key, SettingRequest r, HttpContext c, SettingsService s, CancellationToken ct)
+            => (await s.SetAsync(c.User.GetUserId(), key, r.Value, ct)).ToHttp());
     }
 }

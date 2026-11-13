@@ -1,5 +1,5 @@
-// Chỗ duy nhất lắp các module lại với nhau.
-// Đã gọi init đủ 9 module; ai làm module nào thì viết tiếp trong module.ts của mình.
+// lắp các module lại với nhau
+// mỗi module tự viết tiếp trong module.ts của nó
 import { config } from '@/shared/config';
 import { bus } from '@/shared/event-bus';
 import { RealtimeHub, SignalRTransport } from '@/shared/realtime';

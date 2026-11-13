@@ -3,7 +3,7 @@ export function HomePage() {
   return <Slot name="HomeView" from="server" grow />;
 }
 
-// Ô giữ chỗ: chỉ ra chỗ này sẽ đặt component nào của module nào.
+// placeholder, thay bằng component thật khi module xong
 function Slot({ name, from, grow = false }: { name: string; from: string; grow?: boolean }) {
   return (
     <div className={`flex min-h-[110px] items-center justify-center p-3 ${grow ? 'flex-1' : ''}`}>

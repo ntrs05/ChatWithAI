@@ -6,7 +6,6 @@ export function uid(prefix = ''): string {
   return prefix ? `${prefix}_${raw.slice(0, 16)}` : raw.slice(0, 20);
 }
 
-/** Id riêng của mỗi lần mở trang (một người dùng có thể mở nhiều tab → nhiều kết nối thoại). */
 export const clientId: string = uid('c');
 
 export function cn(...parts: Array<string | false | null | undefined>): string {
@@ -59,7 +58,6 @@ export function randomPick<T>(items: readonly T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
 
-/** Chép văn bản vào clipboard. Trình duyệt chặn (http, không có quyền) thì dùng cách dự phòng; trả về true nếu thành công. */
 export async function copyText(text: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(text);

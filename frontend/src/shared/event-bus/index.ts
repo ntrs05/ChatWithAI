@@ -6,7 +6,6 @@ export type { AppEvents, AppEventName } from './events';
 
 export type AppEventBus = EventBus<AppEvents>;
 
-/** Bus duy nhất của ứng dụng (Modular Monolith → một tiến trình, một bus). */
 export const bus: AppEventBus = new EventBus<AppEvents>();
 
 export const toast = {
@@ -17,7 +16,7 @@ export const toast = {
 
 if (import.meta.env.DEV) {
   bus.subscribeAll((type, payload) => {
-    if ((type as string) === 'voice.signal') return; // quá nhiều, bỏ qua khi log
+    if ((type as string) === 'voice.signal') return; // quá nhiều, khỏi log
     console.debug('%c[bus]', 'color:#2DD4BF', type, payload);
   });
 }
