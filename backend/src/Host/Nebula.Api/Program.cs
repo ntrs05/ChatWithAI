@@ -3,9 +3,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
-using Nebula.Friends;
 using Nebula.Identity;
-using Nebula.Organization;
 using Nebula.Shared.Contracts;
 using Nebula.Shared.Infrastructure;
 
@@ -47,9 +45,7 @@ builder.Services.AddOpenApi();
 
 // ===== 3. Đăng ký từng module: Host KHÔNG biết bên trong module có gì =====
 builder.Services
-    .AddIdentityModule(cfg)        // người dùng, đăng nhập, admin hệ thống khóa tài khoản
-    .AddOrganizationModule(cfg)    // server, chủ server/quản trị viên, lời mời, cài đặt hệ thống
-    .AddFriendsModule(cfg);         // kết bạn
+    .AddIdentityModule(cfg);        // người dùng, đăng nhập, admin hệ thống khóa tài khoản
 
 // ===== 4. Đăng nhập bằng JWT, mặc định mọi API đều phải đăng nhập =====
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o =>
@@ -101,8 +97,6 @@ app.UseAuthorization();
 
 // ===== 5. Mỗi module tự khai báo route của mình =====
 IdentityModule.Endpoints().Map(app);
-OrganizationModule.Endpoints().Map(app);
-FriendsModule.Endpoints().Map(app);
 app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 
 if (app.Environment.IsDevelopment())
@@ -111,8 +105,6 @@ if (app.Environment.IsDevelopment())
 
     // Tự tạo / cập nhật bảng cho từng module khi khởi động.
     await app.Services.MigrateIdentityAsync();
-    await app.Services.MigrateOrganizationAsync();
-    await app.Services.MigrateFriendsAsync();
 }
 
 app.Run();

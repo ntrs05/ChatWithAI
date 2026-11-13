@@ -1,31 +1,29 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Nebula.Friends.Api;
-using Nebula.Friends.Application;
-using Nebula.Friends.Infrastructure;
-using Nebula.Shared.Contracts;
 using Nebula.Shared.Infrastructure;
 
 namespace Nebula.Friends;
 
-/// <summary>Module bạn bè: lời mời kết bạn, danh sách bạn. Chỉ nói chuyện với module khác qua event và IIdentityApi.</summary>
+// TV-Friends làm module này (UC04). Host chỉ gọi hai hàm dưới.
 public static class FriendsModule
 {
     public static IServiceCollection AddFriendsModule(this IServiceCollection services, IConfiguration cfg)
     {
-        services.AddModuleDbContext<FriendsDbContext>(cfg, "friends");
-        services.AddScoped<IFriendsUnitOfWork>(sp => sp.GetRequiredService<FriendsDbContext>());
-        services.AddScoped<IFriendshipRepository, EfFriendshipRepository>();
-        services.AddScoped<FriendService>();
-        services.AddScoped<IFriendsApi, FriendsApi>();
-
-        services.AddEventHandler<FriendRequestSent, FriendRealtimeHandler>();
-        services.AddEventHandler<FriendRequestAccepted, FriendRealtimeHandler>();
-        services.AddEventHandler<FriendshipEnded, FriendRealtimeHandler>();
+        // TODO: đăng ký service của module. Viết xong lớp nào thì mở comment dòng tương ứng:
+        //   services.AddModuleDbContext<FriendsDbContext>(cfg, "friends");
+        //   services.AddScoped<IFriendsUnitOfWork>(sp => sp.GetRequiredService<FriendsDbContext>());
+        //   services.AddScoped<IFriendshipRepository, EfFriendshipRepository>();
+        //   services.AddScoped<FriendService>();
+        //   services.AddScoped<IFriendsApi, FriendsApi>();
+        //   services.AddEventHandler<FriendRequestSent, FriendRealtimeHandler>();
+        //   services.AddEventHandler<FriendRequestAccepted, FriendRealtimeHandler>();
+        //   services.AddEventHandler<FriendshipEnded, FriendRealtimeHandler>();
         return services;
     }
 
     public static IModuleEndpoints Endpoints() => new FriendEndpoints();
 
-    public static Task MigrateFriendsAsync(this IServiceProvider sp) => sp.MigrateAsync<FriendsDbContext>();
+    // Có migration rồi thì thêm hàm này cho Host gọi:
+    //   public static Task MigrateFriendsAsync(this IServiceProvider sp) => sp.MigrateAsync<...DbContext>();
 }
