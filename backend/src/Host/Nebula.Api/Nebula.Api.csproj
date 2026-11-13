@@ -19,6 +19,8 @@
     <ProjectReference Include="..\..\BuildingBlocks\Nebula.Shared.Contracts\Nebula.Shared.Contracts.csproj" />
     <ProjectReference Include="..\..\BuildingBlocks\Nebula.Shared.Infrastructure\Nebula.Shared.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\Identity\Nebula.Identity\Nebula.Identity.csproj" />
+    <ProjectReference Include="..\..\Modules\Organization\Nebula.Organization\Nebula.Organization.csproj" />
+    <ProjectReference Include="..\..\Modules\Friends\Nebula.Friends\Nebula.Friends.csproj" />
   </ItemGroup>
 
 </Project>
