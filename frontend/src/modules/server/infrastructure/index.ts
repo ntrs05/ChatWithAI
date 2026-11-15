@@ -1,8 +1,7 @@
-import type { ApiMode } from '@/shared/config';
-import type { ServerRepository } from '../application/ports';
-import { HttpServerRepository } from './HttpServerRepository';
-import { MockServerRepository } from './MockServerRepository';
+import type { ServerRepository, ServerSettingsRepository } from '../application/ports';
+import { HttpServerRepository, HttpServerSettingsRepository, registerServerWire } from './HttpServerRepository';
 
-export function createServerRepository(mode: ApiMode): ServerRepository {
-  return mode === 'mock' ? new MockServerRepository() : new HttpServerRepository();
+export function createServerInfrastructure(): { servers: ServerRepository; settings: ServerSettingsRepository } {
+  registerServerWire();
+  return { servers: new HttpServerRepository(), settings: new HttpServerSettingsRepository() };
 }

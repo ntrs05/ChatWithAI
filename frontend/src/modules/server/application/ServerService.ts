@@ -1,9 +1,20 @@
 import type { AppEventBus } from '@/shared/event-bus';
 import { ApiError } from '@/shared/http';
 import { topics, type RealtimeHub } from '@/shared/realtime';
-import type { Channel, CreateChannelInput, CreateServerInput, Member, Server } from '../domain/models';
-import { normalizeChannelName, normalizeInviteCode, permissions, validateChannel, validateServer } from '../domain/rules';
-import type { ServerRepository } from './ports';
+import type { Channel, CreateChannelInput, CreateServerInput, Invitation, Member, NotifyLevel, Server, ServerSettings } from '../domain/models';
+import {
+  defaultSettings,
+  isDefaultSettings,
+  isMentioned,
+  muteUntil,
+  normalizeChannelName,
+  normalizeInviteCode,
+  permissions,
+  shouldCountUnread,
+  validateChannel,
+  validateServer,
+} from '../domain/rules';
+import type { ServerRepository, ServerSettingsRepository } from './ports';
 import { resetServerStore, useServerStore } from './serverStore';
 
 const upsert = <T>(list: T[], item: T, same: (a: T) => boolean) =>
@@ -17,6 +28,7 @@ export class ServerService {
 
   constructor(
     private readonly repo: ServerRepository,
+    private readonly settingsRepo: ServerSettingsRepository,
     private readonly bus: AppEventBus,
     private readonly hub: RealtimeHub,
   ) {
@@ -24,6 +36,8 @@ export class ServerService {
     bus.subscribe('auth.loggedIn', ({ user }) => {
       useServerStore.setState({ meId: user.id });
       void this.loadMyServers();
+      void this.loadSettings();
+      void this.loadInvitations();
     });
     bus.subscribe('auth.loggedOut', () => {
       this.topicSubs.forEach((off) => off());
@@ -31,10 +45,32 @@ export class ServerService {
       resetServerStore();
     });
     bus.subscribe('channel.created', ({ channel }) => this.upsertChannel(channel));
+    bus.subscribe('channel.removed', ({ channelId, serverId }) => this.removeChannel(serverId, channelId));
     bus.subscribe('member.joined', ({ member }) => this.upsertMember(member));
+    // Ai đó đổi tên / ảnh -> cập nhật trong danh sách thành viên và lời mời
+    bus.subscribe('user.profileChanged', ({ user }) =>
+      useServerStore.setState((s) => ({
+        members: Object.fromEntries(
+          Object.entries(s.members).map(([id, list]) => [id, list.map((m) => (m.user.id === user.id ? { ...m, user: { ...m.user, ...user } } : m))]),
+        ),
+        invitations: s.invitations.map((i) => (i.invitedBy.id === user.id ? { ...i, invitedBy: { ...i.invitedBy, ...user } } : i)),
+      })),
+    );
+    bus.subscribe('member.left', ({ serverId, userId }) => this.removeMember(serverId, userId));
+    bus.subscribe('server.added', ({ serverId }) => {
+      if (!useServerStore.getState().servers.some((x) => x.id === serverId)) void this.loadMyServers();
+    });
+    bus.subscribe('server.removed', ({ serverId, reason }) => this.handleRemoved(serverId, reason));
+    bus.subscribe('notification.received', ({ notification }) => {
+      if (notification.refType !== 'JoinRequest') return;
+      void this.loadInvitations();
+      this.bus.publish('ui.toast', { kind: 'info', message: 'Bạn có lời mời vào một server mới' });
+    });
     bus.subscribe('chat.message.created', ({ message }) => {
       const s = useServerStore.getState();
+      if (!message.serverId) return;
       if (message.author.id === s.meId || message.channelId === s.activeChannelId) return;
+      if (!shouldCountUnread(s.settings[message.serverId], isMentioned(message.content, s.meId))) return;
       const prev = s.unread[message.channelId]?.count ?? 0;
       useServerStore.setState({
         unread: { ...s.unread, [message.channelId]: { serverId: message.serverId, count: prev + 1 } },
@@ -49,7 +85,85 @@ export class ServerService {
     this.bus.publish('server.listLoaded', { serverIds: servers.map((s) => s.id) });
   }
 
-  /** Tải kênh + thành viên của server (nếu chưa có). */
+  // ===== Cài đặt thông báo / tắt âm theo server (chuột phải vào server) =====
+
+  async loadSettings(): Promise<void> {
+    try {
+      useServerStore.setState({ settings: await this.settingsRepo.list() });
+    } catch {
+      /* không có cài đặt thì dùng mặc định */
+    }
+  }
+
+  setNotifyLevel(serverId: string, level: NotifyLevel): Promise<void> {
+    return this.updateSettings(serverId, (cur) => ({ ...cur, level }));
+  }
+
+  muteServer(serverId: string, minutes: number | 'forever'): Promise<void> {
+    return this.updateSettings(serverId, (cur) => ({ ...cur, mutedUntil: muteUntil(minutes) }));
+  }
+
+  unmuteServer(serverId: string): Promise<void> {
+    return this.updateSettings(serverId, (cur) => ({ ...cur, mutedUntil: null }));
+  }
+
+  private async updateSettings(serverId: string, change: (cur: ServerSettings) => ServerSettings): Promise<void> {
+    const before = useServerStore.getState().settings;
+    const next = change(before[serverId] ?? defaultSettings);
+    useServerStore.setState((s) => {
+      const { [serverId]: _old, ...rest } = s.settings;
+      void _old;
+      return { settings: isDefaultSettings(next) ? rest : { ...rest, [serverId]: next } };
+    });
+    try {
+      if (isDefaultSettings(next)) await this.settingsRepo.reset(serverId);
+      else await this.settingsRepo.save(serverId, next);
+    } catch (err) {
+      useServerStore.setState({ settings: before });
+      throw err;
+    }
+  }
+
+  // ===== Đánh dấu đã đọc / rời server =====
+
+  markServerRead(serverId: string): void {
+    const s = useServerStore.getState();
+    const unread = Object.fromEntries(Object.entries(s.unread).filter(([, u]) => u.serverId !== serverId));
+    useServerStore.setState({ unread });
+    const channelIds = (s.channels[serverId] ?? []).filter((c) => c.type === 'text').map((c) => c.id);
+    this.bus.publish('server.markedRead', { serverId, channelIds });
+  }
+
+  async leaveServer(serverId: string): Promise<void> {
+    const server = useServerStore.getState().servers.find((x) => x.id === serverId);
+    await this.repo.leave(serverId);
+    this.handleRemoved(serverId, 'Left');
+    this.bus.publish('ui.toast', { kind: 'success', message: `Đã rời server${server ? ` "${server.name}"` : ''}` });
+  }
+
+  // ===== Mời người quen vào server =====
+
+  inviteFriend(serverId: string, userId: string): Promise<void> {
+    return this.repo.invite(serverId, userId);
+  }
+
+  async loadInvitations(): Promise<void> {
+    try {
+      useServerStore.setState({ invitations: await this.repo.listInvitations() });
+    } catch {
+
+    }
+  }
+
+  async respondInvitation(invitation: Invitation, accept: boolean): Promise<void> {
+    await this.repo.respondInvitation(invitation.id, accept);
+    useServerStore.setState((s) => ({ invitations: s.invitations.filter((i) => i.id !== invitation.id) }));
+    if (accept) {
+      await this.loadMyServers();
+      this.bus.publish('ui.toast', { kind: 'success', message: `Bạn đã tham gia "${invitation.serverName}"` });
+    }
+  }
+
   async ensureServerData(serverId: string): Promise<Channel[]> {
     const state = useServerStore.getState();
     if (state.channels[serverId] && state.members[serverId]) return state.channels[serverId];
@@ -61,7 +175,6 @@ export class ServerService {
     return channels;
   }
 
-  /** Mở một server/kênh theo URL. Trả về kênh thực sự được chọn. */
   async open(serverId: string, channelId?: string): Promise<Channel | null> {
     useServerStore.setState({ activeServerId: serverId });
     const channels = await this.ensureServerData(serverId);
@@ -136,13 +249,31 @@ export class ServerService {
     return channel;
   }
 
+  /** Chủ server đổi một kênh sang riêng tư / công khai. */
+  async setChannelPrivacy(channel: Channel, isPrivate: boolean): Promise<Channel> {
+    const updated = await this.repo.setChannelPrivacy(channel, isPrivate);
+    this.upsertChannel(updated);
+    return updated;
+  }
+
+  listChannelMembers(channelId: string) {
+    return this.repo.listChannelMembers(channelId);
+  }
+
+  addChannelMember(channelId: string, userId: string) {
+    return this.repo.addChannelMember(channelId, userId);
+  }
+
+  removeChannelMember(channelId: string, userId: string) {
+    return this.repo.removeChannelMember(channelId, userId);
+  }
+
   private addJoinedServer(server: Server) {
     useServerStore.setState((s) => ({ servers: upsert(s.servers, server, (x) => x.id === server.id) }));
     this.watch(server.id);
     this.bus.publish('server.joined', { server });
   }
 
-  /** Subscribe topic realtime của server để nhận tin nhắn / kênh / thành viên mới. */
   private watch(serverId: string) {
     if (this.topicSubs.has(serverId)) return;
     this.topicSubs.set(serverId, this.hub.subscribe(topics.server(serverId)));
@@ -155,6 +286,55 @@ export class ServerService {
       const next = upsert(list, channel, (c) => c.id === channel.id).sort((a, b) => a.position - b.position);
       return { channels: { ...s.channels, [channel.serverId]: next } };
     });
+  }
+
+  private removeChannel(serverId: string, channelId: string) {
+    const before = useServerStore.getState();
+    const list = before.channels[serverId];
+    if (!list) return;
+    const next = list.filter((c) => c.id !== channelId);
+    useServerStore.setState((s) => ({ channels: { ...s.channels, [serverId]: next } }));
+    if (before.activeChannelId === channelId) {
+      const fallback = next.find((c) => c.type === 'text') ?? next[0];
+      if (fallback) this.selectChannel(fallback);
+      else useServerStore.setState({ activeChannelId: null });
+    }
+  }
+
+  private removeMember(serverId: string, userId: string) {
+    if (userId === useServerStore.getState().meId) return this.handleRemoved(serverId, 'Left');
+    useServerStore.setState((s) => {
+      const list = s.members[serverId];
+      return list ? { members: { ...s.members, [serverId]: list.filter((m) => m.user.id !== userId) } } : s;
+    });
+  }
+
+  private handleRemoved(serverId: string, reason: string) {
+    const before = useServerStore.getState();
+    const server = before.servers.find((x) => x.id === serverId);
+    if (!server) return;
+    this.topicSubs.get(serverId)?.();
+    this.topicSubs.delete(serverId);
+    useServerStore.setState((s) => {
+      const { [serverId]: _c, ...channels } = s.channels;
+      const { [serverId]: _m, ...members } = s.members;
+      const { [serverId]: _s, ...settings } = s.settings;
+      void _c;
+      void _m;
+      void _s;
+      return {
+        servers: s.servers.filter((x) => x.id !== serverId),
+        channels,
+        members,
+        settings,
+        unread: Object.fromEntries(Object.entries(s.unread).filter(([, u]) => u.serverId !== serverId)),
+        ...(s.activeServerId === serverId ? { activeServerId: null, activeChannelId: null } : {}),
+      };
+    });
+    if (reason !== 'Left') {
+      const why = reason === 'Deleted' ? 'đã bị xóa' : reason === 'Banned' ? 'đã cấm bạn' : 'đã xóa bạn khỏi nhóm';
+      this.bus.publish('ui.toast', { kind: 'info', message: `Server "${server.name}" ${why}` });
+    }
   }
 
   private upsertMember(member: Member) {
