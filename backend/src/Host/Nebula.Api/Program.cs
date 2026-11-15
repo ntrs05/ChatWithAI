@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using Nebula.Friends;
 using Nebula.Identity;
+using Nebula.Media;
 using Nebula.Organization;
 using Nebula.Shared.Contracts;
 using Nebula.Shared.Infrastructure;
@@ -48,6 +49,7 @@ builder.Services.AddOpenApi();
 builder.Services
     .AddIdentityModule(cfg)
     .AddOrganizationModule(cfg)
+    .AddMediaModule(cfg)
     .AddFriendsModule(cfg);
 
 // jwt
@@ -101,6 +103,7 @@ app.UseAuthorization();
 // routes
 IdentityModule.Endpoints().Map(app);
 OrganizationModule.Endpoints().Map(app);
+MediaModule.Endpoints().Map(app);
 FriendsModule.Endpoints().Map(app);
 app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 
@@ -111,6 +114,7 @@ if (app.Environment.IsDevelopment())
     // migrate khi khởi động
     await app.Services.MigrateIdentityAsync();
     await app.Services.MigrateOrganizationAsync();
+    await app.Services.MigrateMediaAsync();
     await app.Services.MigrateFriendsAsync();
 }
 
