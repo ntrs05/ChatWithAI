@@ -13,6 +13,7 @@ COPY src/Modules/Media/Nebula.Media/Nebula.Media.csproj                         
 COPY src/Modules/Friends/Nebula.Friends/Nebula.Friends.csproj                              src/Modules/Friends/Nebula.Friends/
 COPY src/Host/Nebula.Api/Nebula.Api.csproj                                                 src/Host/Nebula.Api/
 COPY src/Modules/Messaging/Nebula.Messaging/Nebula.Messaging.csproj src/Modules/Messaging/Nebula.Messaging/
+COPY src/Modules/Notifications/Nebula.Notifications/Nebula.Notifications.csproj src/Modules/Notifications/Nebula.Notifications/
 RUN dotnet restore src/Host/Nebula.Api/Nebula.Api.csproj
 
 COPY src/ src/
