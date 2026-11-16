@@ -14,6 +14,10 @@
     </PackageReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include='../../Modules/Messaging/Nebula.Messaging/Nebula.Messaging.csproj' />
+  </ItemGroup>
+
   <!-- Host tham chiếu mọi module để lắp ráp. Module không được tham chiếu ngược lại Host. -->
   <ItemGroup>
     <ProjectReference Include="..\..\BuildingBlocks\Nebula.Shared.Contracts\Nebula.Shared.Contracts.csproj" />

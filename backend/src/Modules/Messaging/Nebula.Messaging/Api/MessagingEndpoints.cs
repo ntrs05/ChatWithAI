@@ -1,74 +1,99 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Nebula.Messaging.Application;
 using Nebula.Shared.Infrastructure;
 
 namespace Nebula.Messaging.Api;
 
-// TODO: request gồm (Guid UserId)
-public sealed record UserIdRequest
-{
-}
-
-// TODO: request gồm (string Content)
-public sealed record EditMessageRequest
-{
-}
-
-// TODO: request gồm (string Emoji)
-public sealed record ReactRequest
-{
-}
-
-// TODO: request gồm (bool Archived)
-public sealed record ArchiveRequest
-{
-}
-
-// TODO: request gồm (string ClientId)
-public sealed record VoiceTokenRequest
-{
-}
-
-// TODO: request gồm (string ClientId, bool Muted, bool Deafened)
-public sealed record VoiceStateRequest
-{
-}
+public sealed record UserIdRequest(Guid UserId);
+public sealed record EditMessageRequest(string Content);
+public sealed record ReactRequest(string Emoji);
+public sealed record ArchiveRequest(bool Archived);
+public sealed record VoiceTokenRequest(string ClientId);
+public sealed record VoiceStateRequest(string ClientId, bool Muted, bool Deafened);
 
 internal sealed class MessagingEndpoints : IModuleEndpoints
 {
     public void Map(IEndpointRouteBuilder app)
     {
-        // TODO: làm mấy route dưới, nghiệp vụ xem đặc tả UC07, UC08, UC10, UC11, UC12, UC16 (kênh), UC17.
-        // Nhớ gắn RequireAuthorization() cho route cần đăng nhập, route admin thì RequireAuthorization("Admin").
-        //   HUB    /hubs/chat  (ChatHub)
-        //   GET    /api/servers/{serverId:guid}/channels
-        //   POST   /api/servers/{serverId:guid}/categories
-        //   DELETE /api/categories/{id:guid}
-        //   POST   /api/servers/{serverId:guid}/channels
-        //   PUT    /api/channels/{id:guid}
-        //   DELETE /api/channels/{id:guid}
-        //   GET    /api/channels/{id:guid}/members
-        //   POST   /api/channels/{id:guid}/members
-        //   DELETE /api/channels/{id:guid}/members/{userId:guid}
-        //   POST   /api/direct
-        //   GET    /api/direct
-        //   PUT    /api/direct/{id:guid}/archive
-        //   DELETE /api/direct/{id:guid}
-        //   GET    /api/conversations/{id:guid}/messages
-        //   POST   /api/conversations/{id:guid}/messages
-        //   GET    /api/conversations/{id:guid}/history
-        //   GET    /api/conversations/{id:guid}/pins
-        //   PUT    /api/conversations/{id:guid}/read
-        //   GET    /api/messages/{id:guid}
-        //   PUT    /api/messages/{id:guid}
-        //   DELETE /api/messages/{id:guid}
-        //   PUT    /api/messages/{id:guid}/pin
-        //   DELETE /api/messages/{id:guid}/pin
-        //   POST   /api/messages/{id:guid}/reactions
-        //   GET    /api/servers/{serverId:guid}/voice-states
-        //   POST   /api/channels/{id:guid}/voice/join
-        //   POST   /api/channels/{id:guid}/voice/leave
-        //   POST   /api/channels/{id:guid}/voice/token
-        //   PUT    /api/channels/{id:guid}/voice/state
-        //   GET    /api/search
+        app.MapHub<ChatHub>("/hubs/chat");   // kênh realtime: tin mới, đang gõ, trạng thái, thay đổi server
+
+        var api = app.MapGroup("/api").RequireAuthorization();
+
+        // ---- Category và kênh trong server ----
+        api.MapGet("servers/{serverId:guid}/channels", async (Guid serverId, HttpContext c, ChannelService s, CancellationToken ct)
+            => (await s.ListAsync(c.User.GetUserId(), serverId, ct)).ToHttp());
+        api.MapPost("servers/{serverId:guid}/categories", async (Guid serverId, CreateCategoryRequest r, HttpContext c, ChannelService s, CancellationToken ct)
+            => (await s.CreateCategoryAsync(c.User.GetUserId(), serverId, r.Name, ct)).ToHttp());
+        api.MapDelete("categories/{id:guid}", async (Guid id, HttpContext c, ChannelService s, CancellationToken ct)
+            => (await s.DeleteCategoryAsync(c.User.GetUserId(), id, ct)).ToHttp());
+        api.MapPost("servers/{serverId:guid}/channels", async (Guid serverId, CreateChannelRequest r, HttpContext c, ChannelService s, CancellationToken ct)
+            => (await s.CreateChannelAsync(c.User.GetUserId(), serverId, r, ct)).ToHttp());
+        api.MapPut("channels/{id:guid}", async (Guid id, UpdateChannelRequest r, HttpContext c, ChannelService s, CancellationToken ct)
+            => (await s.UpdateChannelAsync(c.User.GetUserId(), id, r, ct)).ToHttp());
+        api.MapDelete("channels/{id:guid}", async (Guid id, HttpContext c, ChannelService s, CancellationToken ct)
+            => (await s.DeleteChannelAsync(c.User.GetUserId(), id, ct)).ToHttp());
+
+        // ---- Thành viên của kênh riêng tư (chủ server) ----
+        api.MapGet("channels/{id:guid}/members", async (Guid id, HttpContext c, ChannelService s, CancellationToken ct)
+            => (await s.ListMembersAsync(c.User.GetUserId(), id, ct)).ToHttp());
+        api.MapPost("channels/{id:guid}/members", async (Guid id, ChannelMemberRequest r, HttpContext c, ChannelService s, CancellationToken ct)
+            => (await s.AddMemberAsync(c.User.GetUserId(), id, r.UserId, ct)).ToHttp());
+        api.MapDelete("channels/{id:guid}/members/{userId:guid}", async (Guid id, Guid userId, HttpContext c, ChannelService s, CancellationToken ct)
+            => (await s.RemoveMemberAsync(c.User.GetUserId(), id, userId, ct)).ToHttp());
+
+        // ---- Chat 1-1 ----
+        api.MapPost("direct", async (UserIdRequest r, HttpContext c, DirectService s, CancellationToken ct)
+            => (await s.OpenAsync(c.User.GetUserId(), r.UserId, ct)).ToHttp());
+        api.MapGet("direct", async (bool? archived, HttpContext c, DirectService s, CancellationToken ct)
+            => Results.Ok(await s.ListAsync(c.User.GetUserId(), archived ?? false, ct)));
+        api.MapPut("direct/{id:guid}/archive", async (Guid id, ArchiveRequest r, HttpContext c, DirectService s, CancellationToken ct)
+            => (await s.SetArchivedAsync(c.User.GetUserId(), id, r.Archived, ct)).ToHttp());
+        api.MapDelete("direct/{id:guid}", async (Guid id, HttpContext c, DirectService s, CancellationToken ct)
+            => (await s.ClearAsync(c.User.GetUserId(), id, ct)).ToHttp());
+
+        // ---- Tin nhắn (dùng chung cho kênh server và chat 1-1) ----
+        api.MapGet("conversations/{id:guid}/messages", async (Guid id, DateTime? before, int? take, HttpContext c, MessageService s, CancellationToken ct)
+            => (await s.HistoryAsync(c.User.GetUserId(), id, before, take ?? 50, ct)).ToHttp());
+        api.MapPost("conversations/{id:guid}/messages", async (Guid id, SendMessageRequest r, HttpContext c, MessageService s, CancellationToken ct)
+            => (await s.SendAsync(c.User.GetUserId(), id, r, ct)).ToHttp());
+        // Trang lịch sử cho giao diện: tin xếp cũ → mới + hasMore. ?beforeId= là tin cũ nhất đang hiển thị.
+        api.MapGet("conversations/{id:guid}/history", async (Guid id, Guid? beforeId, int? take, HttpContext c, MessageService s, CancellationToken ct)
+            => (await s.PageAsync(c.User.GetUserId(), id, beforeId, take ?? 30, ct)).ToHttp());
+        api.MapGet("conversations/{id:guid}/pins", async (Guid id, HttpContext c, MessageService s, CancellationToken ct)
+            => (await s.PinnedAsync(c.User.GetUserId(), id, ct)).ToHttp());
+        api.MapPut("conversations/{id:guid}/read", async (Guid id, HttpContext c, MessageService s, CancellationToken ct)
+            => (await s.MarkReadAsync(c.User.GetUserId(), id, ct)).ToHttp());
+        api.MapGet("messages/{id:guid}", async (Guid id, HttpContext c, MessageService s, CancellationToken ct)
+            => (await s.GetAsync(c.User.GetUserId(), id, ct)).ToHttp());
+        api.MapPut("messages/{id:guid}", async (Guid id, EditMessageRequest r, HttpContext c, MessageService s, CancellationToken ct)
+            => (await s.EditAsync(c.User.GetUserId(), id, r.Content, ct)).ToHttp());
+        api.MapDelete("messages/{id:guid}", async (Guid id, HttpContext c, MessageService s, CancellationToken ct)
+            => (await s.DeleteAsync(c.User.GetUserId(), id, ct)).ToHttp());
+        api.MapPut("messages/{id:guid}/pin", async (Guid id, HttpContext c, MessageService s, CancellationToken ct)
+            => (await s.PinAsync(c.User.GetUserId(), id, true, ct)).ToHttp());
+        api.MapDelete("messages/{id:guid}/pin", async (Guid id, HttpContext c, MessageService s, CancellationToken ct)
+            => (await s.PinAsync(c.User.GetUserId(), id, false, ct)).ToHttp());
+        api.MapPost("messages/{id:guid}/reactions", async (Guid id, ReactRequest r, HttpContext c, MessageService s, CancellationToken ct)
+            => (await s.ReactAsync(c.User.GetUserId(), id, r.Emoji, ct)).ToHttp());
+
+        // ---- Kênh thoại: ai đang ở trong kênh nào + vào/rời/tắt mic. Tín hiệu WebRTC đi qua hub (VoiceSignal). ----
+        api.MapGet("servers/{serverId:guid}/voice-states", async (Guid serverId, HttpContext c, VoiceService s, CancellationToken ct)
+            => (await s.ListAsync(c.User.GetUserId(), serverId, ct)).ToHttp());
+        api.MapPost("channels/{id:guid}/voice/join", async (Guid id, VoiceJoinRequest r, HttpContext c, VoiceService s, CancellationToken ct)
+            => (await s.JoinAsync(c.User.GetUserId(), id, r, ct)).ToHttp());
+        api.MapPost("channels/{id:guid}/voice/leave", async (Guid id, VoiceLeaveRequest r, HttpContext c, VoiceService s, CancellationToken ct)
+            => (await s.LeaveAsync(c.User.GetUserId(), id, r.ClientId, ct)).ToHttp());
+        // Vé vào máy chủ SFU (LiveKit). 404 nếu server chưa cấu hình → giao diện dùng lại mesh WebRTC.
+        api.MapPost("channels/{id:guid}/voice/token", async (Guid id, VoiceTokenRequest r, HttpContext c, VoiceTokenService s, CancellationToken ct)
+            => (await s.CreateAsync(c.User.GetUserId(), id, r.ClientId, ct)).ToHttp());
+        api.MapPut("channels/{id:guid}/voice/state", async (Guid id, VoiceStateRequest r, HttpContext c, VoiceService s, CancellationToken ct)
+            => (await s.UpdateAsync(c.User.GetUserId(), id, r.ClientId, r.Muted, r.Deafened, ct)).ToHttp());
+
+        // ---- Tìm kiếm có bộ lọc: ?q=&senderId=&conversationId=&from=&to=&skip=&take= ----
+        api.MapGet("search", async (string? q, Guid? senderId, Guid? conversationId, DateTime? from, DateTime? to, int? skip, int? take,
+                HttpContext c, MessageService s, CancellationToken ct)
+            => Results.Ok(await s.SearchAsync(c.User.GetUserId(), q, senderId, conversationId, from, to, skip ?? 0, take ?? 30, ct)));
     }
 }
