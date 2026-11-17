@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <!-- Kiểm thử chỉ chạm Domain + Application (không cần MySQL). -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\BuildingBlocks\Nebula.Shared.Kernel\Nebula.Shared.Kernel.csproj" />
+    <ProjectReference Include="..\..\src\BuildingBlocks\Nebula.Shared.Contracts\Nebula.Shared.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Identity\Nebula.Identity\Nebula.Identity.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Messaging\Nebula.Messaging\Nebula.Messaging.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Media\Nebula.Media\Nebula.Media.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Ai\Nebula.Ai\Nebula.Ai.csproj" />
+  </ItemGroup>
+ <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+</Project>

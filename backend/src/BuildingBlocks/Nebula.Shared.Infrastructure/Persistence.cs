@@ -15,7 +15,7 @@ public static class PersistenceExtensions
         var connectionString = cfg.GetConnectionString("Default");
         return services.AddDbContext<TContext>(o => o
             .UseMySql(connectionString, MySqlVersion, my => my.MigrationsHistoryTable($"__ef_history_{moduleName}"))
-            // Lệch nhỏ giữa model và ModelSnapshot chỉ nên cảnh báo, không được làm API không khởi động được.
+            // lệch snapshot chỉ cảnh báo, không chặn khởi động
             .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning)));
     }
 

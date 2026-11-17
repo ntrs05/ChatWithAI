@@ -53,7 +53,6 @@ public static class EventBusExtensions
         return services;
     }
 
-    /// <summary>Đăng ký THandler lắng nghe TEvent.</summary>
     public static IServiceCollection AddEventHandler<TEvent, THandler>(this IServiceCollection services)
         where TEvent : IIntegrationEvent
         where THandler : class, IEventHandler<TEvent>
