@@ -22,9 +22,11 @@ export interface Channel {
   topic: string;
   position: number;
   createdAt: string;
+  isPrivate?: boolean;
 }
 
-export type Role = 'admin' | 'member';
+/** owner = chủ server, moderator = quản trị viên, member = thành viên. */
+export type Role = 'owner' | 'moderator' | 'member';
 
 export interface Member {
   serverId: ID;
@@ -44,4 +46,25 @@ export interface CreateChannelInput {
   name: string;
   type: ChannelType;
   topic: string;
+  isPrivate?: boolean;
+  memberIds?: string[];
+}
+
+/** Mức thông báo của CẢ một server */
+export type NotifyLevel = 'all' | 'mentions' | 'nothing';
+
+export interface ServerSettings {
+  level: NotifyLevel;
+  mutedUntil: string | null;
+}
+
+/** Lời mời vào server do người khác gửi, đang chờ mình trả lời. */
+export interface Invitation {
+  id: ID;
+  serverId: ID;
+  serverName: string;
+  iconUrl: string;
+  memberCount: number;
+  invitedBy: UserProfile;
+  createdAt: string;
 }

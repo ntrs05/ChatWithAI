@@ -1,12 +1,12 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LogIn, UserRound, ShieldCheck } from 'lucide-react';
-import { config, demoAccounts } from '@/shared/config';
+import { LogIn } from 'lucide-react';
 import { errorMessage } from '@/shared/http';
 import { Button, Input } from '@/shared/ui';
 import { hasErrors, validateLogin, type FieldErrors, type LoginInput } from '../domain/User';
 import { authService } from '../module';
 import { AuthLayout } from './AuthLayout';
+import { GoogleSignIn } from './GoogleSignIn';
 import { PasswordInput } from './PasswordInput';
 
 export function LoginPage() {
@@ -74,6 +74,8 @@ export function LoginPage() {
         </Button>
       </form>
 
+      <GoogleSignIn text="signin_with" onSuccess={() => navigate(redirectTo, { replace: true })} onError={setServerError} />
+
       <p className="mt-5 text-center text-sm text-muted">
         Chưa có tài khoản?{' '}
         <Link to="/register" className="font-semibold text-brand-300 hover:underline">
@@ -81,36 +83,6 @@ export function LoginPage() {
         </Link>
       </p>
 
-      {config.apiMode === 'mock' && (
-        <div className="mt-6 border-t border-white/10 pt-5">
-          <p className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-muted">Tài khoản demo</p>
-          <div className="grid grid-cols-2 gap-2">
-            {demoAccounts.map((acc) => (
-              <button
-                key={acc.email}
-                type="button"
-                disabled={loading}
-                onClick={() => {
-                  const input = { email: acc.email, password: acc.password };
-                  setForm(input);
-                  void submit(input);
-                }}
-                className="group flex items-start gap-2 rounded-xl border border-ink-600 bg-ink-900/60 p-3 text-left transition hover:border-brand-400/60 hover:bg-ink-700"
-              >
-                {acc.label === 'Admin' ? (
-                  <ShieldCheck size={18} className="mt-0.5 shrink-0 text-nova-400" />
-                ) : (
-                  <UserRound size={18} className="mt-0.5 shrink-0 text-brand-300" />
-                )}
-                <span>
-                  <span className="block text-sm font-semibold text-white">{acc.label}</span>
-                  <span className="block text-[11px] leading-tight text-muted">{acc.hint}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </AuthLayout>
   );
 }

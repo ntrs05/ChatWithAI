@@ -1,12 +1,12 @@
-import type { ApiMode } from '@/shared/config';
 import type { AppEventBus } from '@/shared/event-bus';
 import { AuthService } from './application/AuthService';
 import { createAuthRepository } from './infrastructure';
 
 let instance: AuthService | null = null;
 
-export function initAuthModule(deps: { bus: AppEventBus; mode: ApiMode }): AuthService {
-  instance = new AuthService(createAuthRepository(deps.mode), deps.bus);
+export function initAuthModule(deps: { bus: AppEventBus }): AuthService {
+  instance = new AuthService(createAuthRepository(), deps.bus);
+  instance.listenProfileChanges();
   return instance;
 }
 

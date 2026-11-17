@@ -3,6 +3,10 @@ import type { UserProfile } from '@/shared/types';
 export interface User extends UserProfile {
   email: string;
   createdAt: string;
+  userCode: string;
+  bio: string;
+  hasPassword: boolean;
+  isAdmin: boolean;
 }
 
 export interface AuthSession {
@@ -46,3 +50,40 @@ export function validateRegister(input: RegisterInput): FieldErrors<RegisterInpu
 }
 
 export const hasErrors = (e: object) => Object.keys(e).length > 0;
+
+export const formatUserCode = (code: string) => (code ? `#${code}` : '');
+
+export function parseUserCode(input: string): string | null {
+  const digits = input.replace(/\D/g, '');
+  return digits.length >= 1 && digits.length <= 4 ? digits.padStart(4, '0') : null;
+}
+
+
+export interface ProfileInput {
+  displayName: string;
+  avatarUrl: string;
+  bio: string;
+}
+
+export interface PasswordChangeInput {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export function validateProfile(input: ProfileInput): FieldErrors<ProfileInput> {
+  const errors: FieldErrors<ProfileInput> = {};
+  const name = input.displayName.trim();
+  if (name.length < 2 || name.length > 32) errors.displayName = 'Tên hiển thị dài 2–32 ký tự';
+  if (input.bio.length > 300) errors.bio = 'Giới thiệu tối đa 300 ký tự';
+  return errors;
+}
+
+export function validatePasswordChange(input: PasswordChangeInput, hasPassword: boolean): FieldErrors<PasswordChangeInput> {
+  const errors: FieldErrors<PasswordChangeInput> = {};
+  if (hasPassword && !input.currentPassword) errors.currentPassword = 'Vui lòng nhập mật khẩu hiện tại';
+  if (input.newPassword.length < 6) errors.newPassword = 'Mật khẩu mới tối thiểu 6 ký tự';
+  else if (hasPassword && input.newPassword === input.currentPassword) errors.newPassword = 'Mật khẩu mới phải khác mật khẩu hiện tại';
+  if (input.confirmPassword !== input.newPassword) errors.confirmPassword = 'Mật khẩu nhập lại không khớp';
+  return errors;
+}
