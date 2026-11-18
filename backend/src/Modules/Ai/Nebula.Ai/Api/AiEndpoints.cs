@@ -1,4 +1,7 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Nebula.Ai.Application;
 using Nebula.Shared.Infrastructure;
 
 namespace Nebula.Ai.Api;
@@ -7,8 +10,8 @@ internal sealed class AiEndpoints : IModuleEndpoints
 {
     public void Map(IEndpointRouteBuilder app)
     {
-        // TODO: làm mấy route dưới, nghiệp vụ xem đặc tả UC13, UC14.
-        // Nhớ gắn RequireAuthorization() cho route cần đăng nhập, route admin thì RequireAuthorization("Admin").
-        //   POST   /api/ai/summarize
+        var g = app.MapGroup("/api/ai").RequireAuthorization();
+        g.MapPost("summarize", async (SummarizeRequest r, HttpContext c, SummaryService s, CancellationToken ct)
+            => (await s.SummarizeAsync(c.User.GetUserId(), r, ct)).ToHttp());
     }
 }

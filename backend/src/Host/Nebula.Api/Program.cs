@@ -4,8 +4,12 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using Nebula.Friends;
+using Nebula.Ai;
+using Nebula.Audit;
 using Nebula.Identity;
 using Nebula.Media;
+using Nebula.Messaging;
+using Nebula.Notifications;
 using Nebula.Organization;
 using Nebula.Shared.Contracts;
 using Nebula.Shared.Infrastructure;
@@ -50,7 +54,11 @@ builder.Services
     .AddIdentityModule(cfg)
     .AddOrganizationModule(cfg)
     .AddMediaModule(cfg)
-    .AddFriendsModule(cfg);
+    .AddFriendsModule(cfg)
+    .AddMessagingModule(cfg)
+    .AddNotificationsModule(cfg)
+    .AddAuditModule(cfg)
+    .AddAiModule(cfg);
 
 // jwt
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o =>
@@ -105,6 +113,10 @@ IdentityModule.Endpoints().Map(app);
 OrganizationModule.Endpoints().Map(app);
 MediaModule.Endpoints().Map(app);
 FriendsModule.Endpoints().Map(app);
+MessagingModule.Endpoints().Map(app);
+NotificationsModule.Endpoints().Map(app);
+AuditModule.Endpoints().Map(app);
+AiModule.Endpoints().Map(app);
 app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 
 if (app.Environment.IsDevelopment())
@@ -116,6 +128,9 @@ if (app.Environment.IsDevelopment())
     await app.Services.MigrateOrganizationAsync();
     await app.Services.MigrateMediaAsync();
     await app.Services.MigrateFriendsAsync();
+    await app.Services.MigrateMessagingAsync();
+    await app.Services.MigrateNotificationsAsync();
+    await app.Services.MigrateAuditAsync();
 }
 
 app.Run();
