@@ -1,7 +1,5 @@
 /**
- * Cổng (port) truyền tải realtime — tầng hạ tầng thay thế được:
- *   - MockRealtimeTransport  : BroadcastChannel giữa các tab trình duyệt
- *   - SocketIoTransport      : Socket.IO tới backend thật
+ * Cổng (port) truyền tải realtime — hiện cài đặt bằng SignalRTransport (backend Nebula).
  *
  * Mô hình Pub-Sub theo "topic":
  *   server:<serverId>   — tin nhắn, kênh mới, thành viên mới, trạng thái voice…

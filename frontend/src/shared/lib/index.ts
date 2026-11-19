@@ -58,3 +58,25 @@ export function sleep(ms: number): Promise<void> {
 export function randomPick<T>(items: readonly T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
+
+/** Chép văn bản vào clipboard. Trình duyệt chặn (http, không có quyền) thì dùng cách dự phòng; trả về true nếu thành công. */
+export async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const el = document.createElement('textarea');
+      el.value = text;
+      el.style.position = 'fixed';
+      el.style.opacity = '0';
+      document.body.appendChild(el);
+      el.select();
+      const ok = document.execCommand('copy');
+      el.remove();
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+}

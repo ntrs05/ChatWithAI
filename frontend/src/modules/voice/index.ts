@@ -12,4 +12,5 @@ export {
   VoiceStatusPanel,
   VoiceAudioSink,
 } from './presentation/VoiceWidgets';
+export { VoiceSettingsPanel } from './presentation/VoiceSettingsPanel';
 export { VoiceRoomView } from './presentation/VoiceRoomView';

@@ -27,9 +27,10 @@ async function parseError(res: Response): Promise<ApiError> {
   let message = res.statusText || 'Yêu cầu thất bại';
   let code: string | undefined;
   try {
+    // Backend Nebula trả ProblemDetails: title = mã lỗi (vd "Server.InvalidCode"), detail = thông báo cho người dùng.
     const data = await res.json();
-    message = data.message ?? message;
-    code = data.code;
+    message = data.detail ?? data.message ?? message;
+    code = data.title ?? data.code;
   } catch {
     /* body không phải JSON */
   }
@@ -49,9 +50,20 @@ export async function http<T>(path: string, opts: RequestOptions = {}): Promise<
     },
     body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
   });
-  if (!res.ok) throw await parseError(res);
+  if (!res.ok) {
+    // Token hết hạn / tài khoản bị khóa: báo để ứng dụng đưa người dùng về trang đăng nhập.
+    if (res.status === 401 && token) unauthorizedHandler?.();
+    throw await parseError(res);
+  }
   if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
+  const text = await res.text();   // một số API trả 200 không có body
+  return (text ? JSON.parse(text) : undefined) as T;
+}
+
+let unauthorizedHandler: (() => void) | null = null;
+/** Đăng ký hàm chạy khi server trả 401 trong lúc đang đăng nhập (đặt ở composition root). */
+export function onUnauthorized(handler: () => void): void {
+  unauthorizedHandler = handler;
 }
 
 /** Upload multipart có báo tiến độ (fetch chưa hỗ trợ upload progress nên dùng XHR). */
@@ -74,7 +86,8 @@ export function uploadWithProgress<T>(
       } else {
         let message = 'Tải lên thất bại';
         try {
-          message = JSON.parse(xhr.responseText).message ?? message;
+          const data = JSON.parse(xhr.responseText);
+          message = data.detail ?? data.message ?? message;
         } catch {
           /* ignore */
         }

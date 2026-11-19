@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { HeadphoneOff, Headphones, Mic, MicOff, PhoneOff, Signal } from 'lucide-react';
 import { cn } from '@/shared/lib';
 import { Avatar, IconButton } from '@/shared/ui';
+import { useVoiceSettings } from '../application/voiceSettings';
 import { useVoiceStore } from '../application/voiceStore';
 import { voiceService } from '../module';
 
@@ -71,17 +72,26 @@ export function VoiceStatusPanel({ serverName, onOpen }: { serverName?: string; 
 export function VoiceAudioSink() {
   const streams = useVoiceStore((s) => s.remoteStreams);
   const deafened = useVoiceStore((s) => s.deafened);
+  const volume = useVoiceSettings((s) => s.speakerVolume);
+  const speakerId = useVoiceSettings((s) => s.speakerId);
   return (
     <div hidden>
       {Object.entries(streams).map(([id, stream]) => (
-        <RemoteAudio key={id} stream={stream} muted={deafened} />
+        <RemoteAudio key={id} stream={stream} muted={deafened} volume={volume} speakerId={speakerId} />
       ))}
     </div>
   );
 }
 
-function RemoteAudio({ stream, muted }: { stream: MediaStream; muted: boolean }) {
-  const ref = useRef<HTMLAudioElement>(null);
+function RemoteAudio({ stream, muted, volume, speakerId }: { stream: MediaStream; muted: boolean; volume: number; speakerId: string }) {
+  const ref = useRef<(HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> }) | null>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.volume = Math.min(1, Math.max(0, volume / 100));
+  }, [volume]);
+  useEffect(() => {
+    const el = ref.current;
+    if (el?.setSinkId) void el.setSinkId(speakerId).catch(() => {});
+  }, [speakerId, stream]);
   useEffect(() => {
     if (ref.current && ref.current.srcObject !== stream) {
       ref.current.srcObject = stream;

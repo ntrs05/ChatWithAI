@@ -5,7 +5,7 @@ import { art } from '@/shared/assets';
 import { cn, formatDateTime } from '@/shared/lib';
 import { Button, IconButton } from '@/shared/ui';
 import { useAiStore } from '../application/aiStore';
-import { SUMMARY_RANGES, summaryToText } from '../domain/models';
+import { SUMMARY_COUNTS, SUMMARY_WINDOWS, sameScope, summaryToText, type SummaryScope } from '../domain/models';
 import { aiService } from '../module';
 
 /** Nút "Tóm tắt AI" — được gắn vào header của ChatView qua slot. */
@@ -30,9 +30,10 @@ export function SummarizeButton({ channelId }: { channelId: string }) {
 
 /** UC09 — Bảng hiển thị kết quả tóm tắt từ AI Service. */
 export function SummaryPanel({ channelName }: { channelName: string }) {
-  const { channelId, limit, status, summary, error } = useAiStore();
+  const { channelId, scope, prompt, status, summary, error } = useAiStore();
   const [copied, setCopied] = useState(false);
   if (!channelId) return null;
+  const run = (next: SummaryScope) => void aiService().summarize(channelId, next, prompt ?? undefined);
 
   const copy = async () => {
     if (!summary) return;
@@ -58,28 +59,33 @@ export function SummaryPanel({ channelName }: { channelName: string }) {
           </IconButton>
         </div>
         <h2 className="mt-2 font-display text-lg font-bold text-white">Tóm tắt #{channelName}</h2>
-        <div className="relative mt-3 flex items-center gap-1.5">
-          {SUMMARY_RANGES.map((n) => (
-            <button
-              key={n}
-              onClick={() => void aiService().summarize(channelId, n)}
-              disabled={status === 'loading'}
-              className={cn(
-                'rounded-lg px-2.5 py-1 text-xs font-semibold transition disabled:opacity-60',
-                limit === n ? 'bg-brand-400 text-ink-950' : 'bg-ink-950/50 text-slate-300 hover:bg-ink-950/80',
-              )}
-            >
-              {n} tin
-            </button>
-          ))}
-          <IconButton
-            label="Tạo lại"
-            className="ml-auto"
-            onClick={() => void aiService().summarize(channelId, limit)}
-            disabled={status === 'loading'}
-          >
-            <RefreshCw size={16} className={status === 'loading' ? 'animate-spin' : ''} />
-          </IconButton>
+        {prompt && <p className="relative mt-1 line-clamp-2 text-xs italic text-slate-300">“{prompt}”</p>}
+        <div className="relative mt-3 space-y-2">
+          <div className="flex items-center gap-1.5">
+            <ScopeChip active={sameScope(scope, { mode: 'auto' })} disabled={status === 'loading'} onClick={() => run({ mode: 'auto' })}>
+              Tự động
+            </ScopeChip>
+            <span className="text-[11px] text-muted">AI tự tìm đoạn hội thoại vừa rồi</span>
+            <IconButton label="Tạo lại" className="ml-auto" onClick={() => run(scope)} disabled={status === 'loading'}>
+              <RefreshCw size={16} className={status === 'loading' ? 'animate-spin' : ''} />
+            </IconButton>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="w-14 text-[11px] text-muted">Số tin</span>
+            {SUMMARY_COUNTS.map((n) => (
+              <ScopeChip key={n} active={sameScope(scope, { mode: 'count', limit: n })} disabled={status === 'loading'} onClick={() => run({ mode: 'count', limit: n })}>
+                {n} tin
+              </ScopeChip>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="w-14 text-[11px] text-muted">Trong</span>
+            {SUMMARY_WINDOWS.map((w) => (
+              <ScopeChip key={w.minutes} active={sameScope(scope, { mode: 'since', minutes: w.minutes })} disabled={status === 'loading'} onClick={() => run({ mode: 'since', minutes: w.minutes })}>
+                {w.label}
+              </ScopeChip>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -87,7 +93,7 @@ export function SummaryPanel({ channelName }: { channelName: string }) {
         {status === 'loading' && (
           <div className="space-y-4" aria-busy="true">
             <p className="flex items-center gap-2 text-sm text-brand-200">
-              <Sparkles size={16} className="animate-pulse" /> AI đang đọc {limit} tin nhắn gần nhất…
+              <Sparkles size={16} className="animate-pulse" /> AI đang đọc cuộc trò chuyện…
             </p>
             {[90, 75, 85, 60, 80].map((w, i) => (
               <div key={i} className="h-3 animate-pulse rounded bg-white/5" style={{ width: `${w}%` }} />
@@ -99,7 +105,7 @@ export function SummaryPanel({ channelName }: { channelName: string }) {
           <div className="rounded-xl border border-rose-400/30 bg-rose-500/10 p-4 text-sm text-rose-200">
             <p className="font-semibold">Không tạo được bản tóm tắt</p>
             <p className="mt-1">{error}</p>
-            <Button size="sm" variant="secondary" className="mt-3" onClick={() => void aiService().summarize(channelId, limit)}>
+            <Button size="sm" variant="secondary" className="mt-3" onClick={() => run(scope)}>
               Thử lại
             </Button>
           </div>
@@ -107,6 +113,10 @@ export function SummaryPanel({ channelName }: { channelName: string }) {
 
         {status === 'done' && summary && (
           <div className="animate-fade-in space-y-5 text-sm">
+            <p className="text-xs text-muted">
+              {summary.scope} · {summary.messageCount} tin
+              {summary.timeRange && ` · ${formatDateTime(summary.timeRange.from)} → ${formatDateTime(summary.timeRange.to)}`}
+            </p>
             <p className="leading-relaxed text-slate-200">{summary.overview}</p>
 
             {summary.participants.length > 0 && (
@@ -164,5 +174,20 @@ function Section({ icon, title, items, tone }: { icon: ReactNode; title: string;
         })}
       </ul>
     </section>
+  );
+}
+
+function ScopeChip({ active, disabled, onClick, children }: { active: boolean; disabled: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        'rounded-lg px-2.5 py-1 text-xs font-semibold transition disabled:opacity-60',
+        active ? 'bg-brand-400 text-ink-950' : 'bg-ink-950/50 text-slate-300 hover:bg-ink-950/80',
+      )}
+    >
+      {children}
+    </button>
   );
 }

@@ -16,6 +16,7 @@ import {
   type MemberProfileDto,
 } from './httpMappers';
 
+/** Hiện thực ServerRepository bằng REST API của backend Nebula. */
 export class HttpServerRepository implements ServerRepository {
   private categories = new Map<string, ServerChannelsDto['categories']>();
 

@@ -1,13 +1,21 @@
 import type { AudioLevelMeter, MicrophonePort } from '../application/ports';
+import { useVoiceSettings } from '../application/voiceSettings';
 import { SPEAKING_THRESHOLD } from '../domain/models';
 
 export class BrowserMicrophone implements MicrophonePort {
   async getMicrophone(): Promise<MediaStream> {
     if (!navigator.mediaDevices?.getUserMedia) throw new Error('Trình duyệt không hỗ trợ micro');
-    return navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      video: false,
-    });
+    const base = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+    const micId = useVoiceSettings.getState().micId;
+    try {
+      return await navigator.mediaDevices.getUserMedia({ audio: micId ? { ...base, deviceId: { exact: micId } } : base, video: false });
+    } catch (err) {
+      // Micro đã chọn không còn → dùng micro mặc định
+      if (micId && err instanceof DOMException && (err.name === 'OverconstrainedError' || err.name === 'NotFoundError')) {
+        return navigator.mediaDevices.getUserMedia({ audio: base, video: false });
+      }
+      throw err;
+    }
   }
 }
 

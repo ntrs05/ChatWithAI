@@ -1,17 +1,22 @@
 import { useEffect } from 'react';
 import { matchPath, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Compass, Home, Menu } from 'lucide-react';
-import { UserPanel } from '@/modules/auth';
-import { ChannelSidebar, ServerRail, serverService, useServerStore } from '@/modules/server';
+import { Bell, Compass, Home, Menu, ShieldCheck, Users } from 'lucide-react';
+import { UserPanel, useAuthStore } from '@/modules/auth';
+import { DirectList, selectUnreadChats, useDirectStore } from '@/modules/direct';
+import { selectUnread, useNotificationStore } from '@/modules/notifications';
+import { FriendPicker, selectIncomingCount, useFriendStore } from '@/modules/friends';
+import { ChannelSidebar, ServerRail, serverService, useServerStore, type Server } from '@/modules/server';
 import { VoiceAudioSink, VoiceChannelParticipants, VoiceControls, VoiceStatusPanel, useVoiceStore } from '@/modules/voice';
 import { cn } from '@/shared/lib';
 import { Logo } from '@/shared/ui';
 import { useUiStore } from '../uiStore';
+import { SettingsModal } from './SettingsModal';
 
 /**
  * Bố cục ứng dụng. Đây là nơi GHÉP giao diện của nhiều module qua "slot":
  *  - ChannelSidebar (server) nhận VoiceChannelParticipants (voice) qua renderVoiceExtra
  *  - UserPanel (auth) nhận VoiceControls (voice) qua actions
+ *  - InviteModal (server) nhận danh sách bạn bè (friends) qua renderInviteExtra
  */
 export function AppShell() {
   const { pathname } = useLocation();
@@ -19,10 +24,16 @@ export function AppShell() {
   const sidebarOpen = useUiStore((s) => s.sidebarOpen);
   const voiceChannel = useVoiceStore((s) => s.channel);
   const servers = useServerStore((s) => s.servers);
+  const incomingFriends = useFriendStore(selectIncomingCount);
+  const unreadChats = useDirectStore(selectUnreadChats);
+  const unreadNotifications = useNotificationStore(selectUnread);
+  const isAdmin = useAuthStore((s) => !!s.user?.isAdmin);
 
   const match = matchPath('/app/:segment/*', pathname);
   const segment = match?.params.segment;
-  const view: 'home' | 'discover' | 'server' = !segment ? 'home' : segment === 'discover' ? 'discover' : 'server';
+  const homeViews = ['discover', 'friends', 'settings', 'dm', 'notifications', 'admin'] as const;
+  type View = 'home' | 'server' | (typeof homeViews)[number];
+  const view: View = !segment ? 'home' : (homeViews as readonly string[]).includes(segment) ? (segment as View) : 'server';
 
   useEffect(() => {
     useUiStore.setState({ sidebarOpen: false });
@@ -30,6 +41,15 @@ export function AppShell() {
   }, [pathname, view]);
 
   const closeSidebar = () => useUiStore.setState({ sidebarOpen: false });
+
+  /** "Mời bạn bè": chọn từ danh sách bạn → gửi lời mời vào server (người kia nhận thông báo và tự đồng ý). */
+  const renderInviteExtra = (server: Server) => (
+    <FriendPicker
+      actionLabel="Mời"
+      doneLabel="Đã mời"
+      onAction={(friend) => serverService().inviteFriend(server.id, friend.user.id)}
+    />
+  );
   const footer = (
     <>
       <VoiceStatusPanel
@@ -48,10 +68,32 @@ export function AppShell() {
           sidebarOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
-        <ServerRail view={view} />
+        <ServerRail
+          view={view}
+          renderInviteExtra={renderInviteExtra}
+          extras={[
+            {
+              key: 'friends',
+              label: 'Bạn bè',
+              active: view === 'friends',
+              badge: incomingFriends + unreadChats,
+              icon: <Users size={22} className="text-emerald-300" />,
+              onClick: () => navigate('/app/friends'),
+            },
+            {
+              key: 'notifications',
+              label: 'Thông báo',
+              active: view === 'notifications',
+              badge: unreadNotifications,
+              icon: <Bell size={22} className="text-amber-300" />,
+              onClick: () => navigate('/app/notifications'),
+            },
+          ]}
+        />
         {view === 'server' && segment ? (
           <ChannelSidebar
             serverId={segment}
+            renderInviteExtra={renderInviteExtra}
             renderVoiceExtra={(c) => <VoiceChannelParticipants channelId={c.id} />}
             footer={footer}
             onNavigate={closeSidebar}
@@ -61,10 +103,13 @@ export function AppShell() {
             <div className="flex h-14 items-center border-b border-black/20 px-4">
               <Logo size={26} />
             </div>
-            <nav className="flex-1 space-y-1 p-2">
+            <nav className="space-y-1 p-2">
               {[
                 { to: '/app', label: 'Trang chủ', icon: Home, active: view === 'home' },
+                { to: '/app/friends', label: 'Bạn bè', icon: Users, active: view === 'friends', badge: incomingFriends },
+                { to: '/app/notifications', label: 'Thông báo', icon: Bell, active: view === 'notifications', badge: unreadNotifications },
                 { to: '/app/discover', label: 'Khám phá server', icon: Compass, active: view === 'discover' },
+                ...(isAdmin ? [{ to: '/app/admin', label: 'Quản trị', icon: ShieldCheck, active: view === 'admin', badge: 0 }] : []),
               ].map((item) => (
                 <button
                   key={item.to}
@@ -75,9 +120,13 @@ export function AppShell() {
                   )}
                 >
                   <item.icon size={19} className={item.active ? 'text-brand-300' : ''} /> {item.label}
+                  {!!item.badge && (
+                    <span className="ml-auto rounded-full bg-nova-500 px-1.5 text-[11px] font-bold leading-[18px] text-white">{item.badge}</span>
+                  )}
                 </button>
               ))}
             </nav>
+            <DirectList onNavigate={closeSidebar} />
             {footer}
           </aside>
         )}
@@ -97,6 +146,7 @@ export function AppShell() {
         <Outlet />
       </main>
       <VoiceAudioSink />
+      <SettingsModal />
     </div>
   );
 }

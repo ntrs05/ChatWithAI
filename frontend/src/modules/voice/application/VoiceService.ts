@@ -45,6 +45,7 @@ export class VoiceService {
 
     // ---- SUBSCRIBE ----
     bus.subscribe('auth.loggedIn', ({ user }) => useVoiceStore.setState({ me: user }));
+    bus.subscribe('auth.profileUpdated', ({ user }) => useVoiceStore.setState({ me: user }));
     bus.subscribe('auth.loggingOut', () => void this.leave());
     bus.subscribe('auth.loggedOut', () => resetVoiceStore());
     bus.subscribe('server.listLoaded', ({ serverIds }) => serverIds.forEach((id) => void this.loadServer(id)));
