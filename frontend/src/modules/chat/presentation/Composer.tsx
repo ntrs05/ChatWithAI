@@ -14,13 +14,16 @@ interface Props {
   channelId: string;
   serverId: string;
   channelName: string;
+  /** Chat 1-1: placeholder dùng @tên thay vì #kênh. */
+  direct?: boolean;
   files: PendingFile[];
   onFilesChange: (updater: (files: PendingFile[]) => PendingFile[]) => void;
   onAddFiles: (files: File[]) => void;
+  /** Cho module khác bắt lệnh gõ trong ô chat (vd: @nebula). Trả true = đã xử lý, không gửi thành tin nhắn. */
 }
 
 /** UC04 (gửi tin nhắn) + UC06 (đính kèm file / hình ảnh). */
-export function Composer({ channelId, serverId, channelName, files, onFilesChange, onAddFiles }: Props) {
+export function Composer({ channelId, serverId, channelName, direct = false, files, onFilesChange, onAddFiles }: Props) {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -153,7 +156,7 @@ export function Composer({ channelId, serverId, channelName, files, onFilesChang
             onKeyDown={onKeyDown}
             onPaste={onPaste}
             maxLength={MAX_MESSAGE_LENGTH}
-            placeholder={`Nhắn tin tới #${channelName}`}
+            placeholder={direct ? `Nhắn tin tới ${channelName}` : `Nhắn tin tới #${channelName}`}
             aria-label="Nội dung tin nhắn"
             className="max-h-[220px] min-h-[24px] flex-1 resize-none bg-transparent py-2.5 text-[15px] text-slate-100 placeholder:text-slate-500 focus:outline-none"
           />

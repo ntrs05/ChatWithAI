@@ -11,11 +11,13 @@ export interface ChannelHistory {
 interface ChatState {
   me: { id: string; displayName: string; username: string; avatarUrl: string } | null;
   history: Record<string, ChannelHistory>;
-  /** channelId → userId → { tên, hết hạn lúc } */
+  /** channelId -> userId -> { tên, hết hạn lúc } */
   typing: Record<string, Record<string, { name: string; until: number }>>;
+  /** Tin đang ghim của từng hội thoại (chỉ có sau khi mở khung "Tin đã ghim"). */
+  pins: Record<string, Message[]>;
 }
 
-const initial: ChatState = { me: null, history: {}, typing: {} };
+const initial: ChatState = { me: null, history: {}, typing: {}, pins: {} };
 
 export const useChatStore = create<ChatState>(() => ({ ...initial }));
 

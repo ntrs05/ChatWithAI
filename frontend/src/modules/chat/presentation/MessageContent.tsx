@@ -1,6 +1,6 @@
 import { Fragment, type ReactNode } from 'react';
 
-const TOKEN_RE = /(https?:\/\/[^\s]+)|(\*\*[^*]+\*\*)|(`[^`]+`)/g;
+const TOKEN_RE = /(https?:\/\/[^\s]+)|(\*\*[^*]+\*\*)|(`[^`]+`)|(<@[0-9a-fA-F-]{36}>)/g;
 
 /** Hiển thị nội dung: tự nhận link, **in đậm**, `code`, xuống dòng. Không dùng innerHTML (tránh XSS). */
 export function MessageContent({ text, highlight }: { text: string; highlight?: string }) {
@@ -22,7 +22,7 @@ function renderLine(line: string, highlight?: string): ReactNode[] {
   for (const m of line.matchAll(TOKEN_RE)) {
     const idx = m.index ?? 0;
     if (idx > last) out.push(...mark(line.slice(last, idx), highlight, `t${idx}`));
-    const [token, url, bold, code] = m;
+    const [token, url, bold, code, mention] = m;
     if (url) {
       out.push(
         <a key={`u${idx}`} href={url} target="_blank" rel="noreferrer noopener" className="text-brand-300 hover:underline">
@@ -31,6 +31,13 @@ function renderLine(line: string, highlight?: string): ReactNode[] {
       );
     } else if (bold) {
       out.push(<strong key={`b${idx}`}>{bold.slice(2, -2)}</strong>);
+    } else if (mention) {
+      // Backend lưu lời nhắc tên dạng <@id>; chưa có danh sách tên ở đây nên hiện chữ chung, tô nổi bật.
+      out.push(
+        <span key={`m${idx}`} className="rounded bg-brand-400/20 px-1 font-medium text-brand-200">
+          @người-dùng
+        </span>,
+      );
     } else if (code) {
       out.push(
         <code key={`c${idx}`} className="rounded bg-ink-950 px-1.5 py-0.5 font-mono text-[0.85em] text-brand-200">
