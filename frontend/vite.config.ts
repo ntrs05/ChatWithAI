@@ -10,6 +10,10 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  build: {
+    // src/main.tsx dùng top-level await (`await bootstrap()`) → cần target ES2022 trở lên.
+    target: 'es2022',
+  },
   server: {
     port: 5173,
     // Khi có backend thật: chuyển tiếp /api và /socket.io sang server Node
