@@ -28,7 +28,7 @@ public static class MessagingModule
         services.AddScoped<VoiceTokenService>();
         services.AddSingleton<IVoiceStateStore, InMemoryVoiceStateStore>();
 
-        // Messaging sở hữu SignalR hub nên là nơi hiện thực IRealtimeGateway cho cả hệ thống.
+        // hub nằm ở Messaging nên hiện thực IRealtimeGateway ở đây
         services.AddSingleton<PresenceTracker>();
         services.AddSingleton<IUserIdProvider, SubUserIdProvider>();
         services.AddSingleton<IRealtimeGateway, SignalRGateway>();

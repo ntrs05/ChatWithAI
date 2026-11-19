@@ -8,7 +8,6 @@ using Nebula.Shared.Infrastructure;
 
 namespace Nebula.Audit;
 
-/// <summary>Module nhật ký hoạt động: chỉ nghe event, không module nào gọi trực tiếp vào đây.</summary>
 public static class AuditModule
 {
     public static IServiceCollection AddAuditModule(this IServiceCollection services, IConfiguration cfg)

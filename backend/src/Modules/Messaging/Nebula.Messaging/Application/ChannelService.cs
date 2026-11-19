@@ -5,13 +5,10 @@ using Nebula.Shared.Kernel;
 namespace Nebula.Messaging.Application;
 
 public sealed record CreateCategoryRequest(string Name);
-/// <param name="IsPrivate">Kênh riêng tư: chỉ chủ server và những người trong MemberIds mới thấy.</param>
 public sealed record CreateChannelRequest(string Name, ChannelKind Kind, Guid? CategoryId, string? Topic = null, bool IsPrivate = false, IReadOnlyList<Guid>? MemberIds = null);
-/// <param name="IsPrivate">null = giữ nguyên. Đổi sang riêng tư thì chỉ còn chủ server; đổi sang công khai thì xóa danh sách thành viên.</param>
 public sealed record UpdateChannelRequest(string Name, string? Topic, bool? IsPrivate = null);
 public sealed record ChannelMemberRequest(Guid UserId);
 
-/// <summary>Category và kênh trong server. Ai được quản lý kênh: hỏi Organization (CanManage = chủ server).</summary>
 public sealed class ChannelService(IConversationRepository conversations, IOrganizationApi organization, IIdentityApi identity, IMessagingUnitOfWork uow, IEventBus bus)
 {
     private static readonly Error NoManage = Error.Forbidden("Channel.NoPermission", "Chỉ chủ server mới quản lý được kênh.");
@@ -26,7 +23,7 @@ public sealed class ChannelService(IConversationRepository conversations, IOrgan
         var categories = await conversations.ListCategoriesAsync(serverId, ct);
         var channels = (await conversations.ListChannelsAsync(serverId, ct)).OrderBy(c => c.Position).ToList();
 
-        // Kênh riêng tư chỉ hiện với chủ server và những người có tên trong danh sách của kênh.
+        // kênh riêng tư chỉ chủ server và người trong danh sách mới thấy
         if (!access.CanManage)
         {
             var privateIds = channels.Where(c => c.IsPrivate).Select(c => c.Id).ToList();
@@ -53,7 +50,6 @@ public sealed class ChannelService(IConversationRepository conversations, IOrgan
         return Result.Success(new CategoryDto(created.Value.Id, created.Value.Name, created.Value.Position, []));
     }
 
-    /// <summary>Chỉ xóa được category rỗng, tránh xóa nhầm cả loạt kênh.</summary>
     public async Task<Result> DeleteCategoryAsync(Guid userId, Guid categoryId, CancellationToken ct)
     {
         var category = await conversations.GetCategoryAsync(categoryId, ct);
@@ -86,13 +82,13 @@ public sealed class ChannelService(IConversationRepository conversations, IOrgan
         IReadOnlyList<Guid> notify = serverMembers;
         if (req.IsPrivate)
         {
-            // Người tạo (chủ server) luôn nằm trong danh sách; người khác phải là thành viên server.
+            // chủ server luôn trong danh sách, người khác phải là thành viên server
             var chosen = (req.MemberIds ?? []).Append(userId).Distinct().Where(id => serverMembers.Contains(id)).ToList();
             foreach (var id in chosen) await conversations.AddChannelMemberAsync(ChannelMember.Create(created.Value.Id, id), ct);
             notify = chosen;
         }
         await uow.SaveChangesAsync(ct);
-        // Realtime: những người thấy được kênh này cập nhật thanh bên ngay.
+        // báo realtime
         await bus.PublishAsync(new ChannelCreated(created.Value.Id, serverId, notify), ct);
         return Result.Success(ChannelDto.From(created.Value));
     }
@@ -111,7 +107,7 @@ public sealed class ChannelService(IConversationRepository conversations, IOrgan
             var everyone = await organization.GetMemberIdsAsync(serverId, ct);
             if (makePrivate)
             {
-                // Chuyển sang riêng tư: chỉ còn người đang thao tác (chủ server) trong danh sách.
+                // đổi sang riêng tư thì chỉ còn chủ server
                 channel.SetPrivate(true);
                 await conversations.AddChannelMemberAsync(ChannelMember.Create(channel.Id, userId), ct);
                 await uow.SaveChangesAsync(ct);
@@ -128,7 +124,7 @@ public sealed class ChannelService(IConversationRepository conversations, IOrgan
         return Result.Success(ChannelDto.From(channel));
     }
 
-    // ---- Thành viên của kênh riêng tư (chỉ chủ server quản lý) ----
+    // thành viên kênh riêng tư
 
     private async Task<(Conversation? Channel, Error? Error)> OwnedPrivateChannelAsync(Guid userId, Guid channelId, CancellationToken ct)
     {
@@ -160,7 +156,7 @@ public sealed class ChannelService(IConversationRepository conversations, IOrgan
         if (await conversations.GetChannelMemberAsync(channel.Id, targetId, ct) is not null) return Result.Success();
         await conversations.AddChannelMemberAsync(ChannelMember.Create(channel.Id, targetId), ct);
         await uow.SaveChangesAsync(ct);
-        await bus.PublishAsync(new ChannelCreated(channel.Id, serverId, [targetId]), ct);   // kênh hiện ra trong thanh bên của họ
+        await bus.PublishAsync(new ChannelCreated(channel.Id, serverId, [targetId]), ct);   // kênh hiện ra cho họ
         return Result.Success();
     }
 
@@ -182,12 +178,11 @@ public sealed class ChannelService(IConversationRepository conversations, IOrgan
         var channel = await conversations.GetAsync(channelId, ct);
         if (channel is null || channel.IsDirect) return Result.Failure(ChannelNotFound);
         if (!(await organization.GetAccessAsync(channel.ServerId!.Value, userId, ct)).CanManage) return Result.Failure(NoManage);
-        conversations.Remove(channel);   // tin nhắn, ghim của kênh được DB xóa theo (ON DELETE CASCADE)
+        conversations.Remove(channel);   // DB tự xóa tin nhắn, ghim (cascade)
         await uow.SaveChangesAsync(ct);
         return Result.Success();
     }
 
-    /// <summary>Gọi khi có server mới (event ServerCreated): tạo sẵn "Kênh chat/#general" và "Kênh thoại/General".</summary>
     public async Task CreateDefaultChannelsAsync(Guid serverId, Guid creatorId, CancellationToken ct)
     {
         var chat = Category.Create(serverId, "Kênh chat", 0).Value;

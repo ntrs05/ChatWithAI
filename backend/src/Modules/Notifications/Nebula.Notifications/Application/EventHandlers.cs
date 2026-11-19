@@ -3,7 +3,6 @@ using Nebula.Shared.Contracts;
 
 namespace Nebula.Notifications.Application;
 
-/// <summary>Subscriber của MessageSent: tạo thông báo khi được tag hoặc có tin 1-1. Messaging không biết module này tồn tại.</summary>
 public sealed class MessageSentHandler(INotificationRepository repo, Notifier notifier) : IEventHandler<MessageSent>
 {
     public async Task HandleAsync(MessageSent e, CancellationToken ct)
@@ -34,14 +33,12 @@ public sealed class MessageSentHandler(INotificationRepository repo, Notifier no
     }
 }
 
-/// <summary>Báo cho người dùng các thay đổi về server của họ (do module Organization phát event).</summary>
 public sealed class ServerNotificationHandler(Notifier notifier)
     : IEventHandler<ServerCreated>, IEventHandler<MemberAddedToServer>, IEventHandler<MemberRemovedFromServer>,
       IEventHandler<MemberRoleChanged>, IEventHandler<JoinRequestCreated>
 {
     private static readonly Dictionary<string, string> RoleNames = new() { ["Owner"] = "chủ server", ["Moderator"] = "quản trị viên", ["Member"] = "thành viên" };
 
-    /// <summary>Admin hệ thống tạo server và giao cho người khác làm chủ server.</summary>
     public Task HandleAsync(ServerCreated e, CancellationToken ct)
         => e.OwnerId == e.ActorId ? Task.CompletedTask : notifier.SendAsync(
             [Notification.Create(e.OwnerId, NotificationType.ServerOwner, "Bạn được giao làm chủ server", $"Server \"{e.Name}\"", "Server", e.ServerId, e.ActorId)], ct);
@@ -60,13 +57,11 @@ public sealed class ServerNotificationHandler(Notifier notifier)
             [Notification.Create(e.UserId, NotificationType.RoleChanged, "Chức vụ của bạn thay đổi",
                 $"Bạn giờ là {RoleNames.GetValueOrDefault(e.NewRole, e.NewRole)} của server \"{e.ServerName}\"", "Server", e.ServerId, e.ActorId)], ct);
 
-    /// <summary>Lời mời → báo người được mời. Yêu cầu xin vào → báo chủ server/quản trị viên để duyệt.</summary>
     public Task HandleAsync(JoinRequestCreated e, CancellationToken ct)
         => notifier.SendAsync(e.NotifyUserIds.Select(userId => Notification.Create(userId, NotificationType.JoinRequest,
                 e.Type == "Invite" ? "Bạn được mời vào server" : "Có người xin vào server", $"Server \"{e.ServerName}\"", "JoinRequest", e.RequestId, e.ActorId)).ToList(), ct);
 }
 
-/// <summary>Identity báo đổi trạng thái; nếu là "Không làm phiền" thì chép cờ vào cài đặt thông báo.</summary>
 public sealed class UserStatusChangedHandler(INotificationRepository repo, INotificationsUnitOfWork uow) : IEventHandler<UserStatusChanged>
 {
     public async Task HandleAsync(UserStatusChanged e, CancellationToken ct)
@@ -84,7 +79,6 @@ public sealed class UserStatusChangedHandler(INotificationRepository repo, INoti
     }
 }
 
-/// <summary>Bạn bè: có lời mời mới → báo người nhận; được chấp nhận → báo người đã gửi.</summary>
 public sealed class FriendNotificationHandler(Notifier notifier) : IEventHandler<FriendRequestSent>, IEventHandler<FriendRequestAccepted>
 {
     public Task HandleAsync(FriendRequestSent e, CancellationToken ct)
@@ -96,7 +90,6 @@ public sealed class FriendNotificationHandler(Notifier notifier) : IEventHandler
             "Lời mời kết bạn của bạn đã được chấp nhận", "Friend", e.RequestId, e.AddresseeId)], ct);
 }
 
-/// <summary>Rời / bị xóa khỏi server hoặc server bị xóa → dọn cài đặt thông báo của server đó.</summary>
 public sealed class ServerSettingCleanupHandler(INotificationRepository repo) : IEventHandler<MemberRemovedFromServer>, IEventHandler<ServerDeleted>
 {
     public Task HandleAsync(MemberRemovedFromServer e, CancellationToken ct) => repo.DeleteServerSettingsAsync(e.ServerId, e.UserId, ct);

@@ -5,15 +5,13 @@ using Nebula.Shared.Kernel;
 
 namespace Nebula.Messaging.Application;
 
-/// <param name="AttachmentIds">Id các file đã upload qua POST /api/files.</param>
-/// <param name="ReplyToId">Trả lời tin nào (cùng hội thoại).</param>
 public sealed record SendMessageRequest(string? Content, IReadOnlyList<Guid>? AttachmentIds = null, Guid? ReplyToId = null);
 
 public sealed partial class MessageService(
     ConversationAccess access, IConversationRepository conversations, IMessageRepository messages,
     IOrganizationApi organization, IMediaApi media, IFriendsApi friends, MessageDtoFactory factory, IMessagingUnitOfWork uow, IEventBus bus)
 {
-    // Quy ước tag người dùng trong nội dung: <@guid>. Client hiển thị thành @tên.
+    // tag người dùng dạng <@guid>
     [GeneratedRegex(@"<@([0-9a-fA-F\-]{36})>")]
     private static partial Regex MentionRegex();
 
@@ -27,18 +25,18 @@ public sealed partial class MessageService(
         if (a is null) return NotFound;
         if (!a.CanRead) return NoAccess;
         if (a.Conversation.Kind == ChannelKind.Voice) return new Error("Channel.VoiceOnly", "Kênh voice không nhắn tin.");
-        // Chat 1-1: đã hủy kết bạn thì vẫn xem được lịch sử nhưng không nhắn thêm được.
+        // hủy kết bạn thì không nhắn thêm được
         if (a.Conversation.IsDirect && !await friends.AreFriendsAsync(senderId, a.Conversation.OtherParticipant(senderId), ct))
             return Error.Forbidden("Direct.NotFriends", "Hai bạn không còn là bạn bè nên không thể nhắn tin riêng.");
 
-        // Chỉ chấp nhận tag những người thật sự ở trong hội thoại (chặn tag bừa để spam thông báo).
+        // chỉ tag người trong hội thoại
         var mentioned = MentionRegex().Matches(req.Content ?? "").Select(m => Guid.Parse(m.Groups[1].Value))
             .Where(id => a.ParticipantIds.Contains(id) && id != senderId).Distinct().ToList();
 
         if (req.ReplyToId is Guid replyId && (await messages.GetAsync(replyId, ct))?.ConversationId != conversationId)
             return new Error("Message.InvalidReply", "Tin được trả lời không nằm trong hội thoại này.");
 
-        // File đính kèm: hỏi module Media xem file có thật và đúng là của người gửi không.
+        // check file đính kèm với Media
         var attachments = new List<MessageAttachment>();
         if (req.AttachmentIds is { Count: > 0 } ids)
         {
@@ -54,7 +52,7 @@ public sealed partial class MessageService(
         await messages.AddAsync(message, ct);
         await uow.SaveChangesAsync(ct);
 
-        // Gửi xong là xong. Realtime, thông báo... là việc của những ai đăng ký nghe MessageSent.
+        // realtime, thông báo do các handler của MessageSent lo
         await bus.PublishAsync(new MessageSent(
             message.Id, conversationId, a.Conversation.ServerId, senderId, message.Content, message.CreatedAt, a.Conversation.IsDirect,
             a.ParticipantIds.Where(p => p != senderId).ToList(), mentioned), ct);
@@ -72,8 +70,6 @@ public sealed partial class MessageService(
         return Result.Success(await factory.ToDtosAsync(list, pinned, ct));
     }
 
-    /// <summary>Trang lịch sử cho giao diện: tin xếp cũ → mới, kèm HasMore. beforeId = tin cũ nhất đang hiển thị
-    /// (lấy các tin cũ hơn nó). Lấy dư 1 tin để biết còn trang nữa không, không cần đếm tổng.</summary>
     public async Task<Result<MessagePageDto>> PageAsync(Guid userId, Guid conversationId, Guid? beforeId, int take, CancellationToken ct)
     {
         DateTime? before = null;
@@ -133,7 +129,6 @@ public sealed partial class MessageService(
         return Result.Success();
     }
 
-    /// <summary>Ghim: trong kênh server cần chủ server/quản trị viên; trong chat 1-1 thì cả hai người đều ghim được.</summary>
     public async Task<Result> PinAsync(Guid userId, Guid messageId, bool pinned, CancellationToken ct)
     {
         var (message, a, error) = await LoadAsync(userId, messageId, ct);
@@ -160,7 +155,6 @@ public sealed partial class MessageService(
         return Result.Success<IReadOnlyList<MessageDto>>(result);
     }
 
-    /// <summary>Đánh dấu đã đọc tới hiện tại (để tính "chưa đọc").</summary>
     public async Task<Result> MarkReadAsync(Guid userId, Guid conversationId, CancellationToken ct)
     {
         var a = await access.CheckAsync(conversationId, userId, ct);
@@ -173,7 +167,6 @@ public sealed partial class MessageService(
         return Result.Success();
     }
 
-    /// <summary>Tìm kiếm có bộ lọc, chỉ trong chat 1-1 của mình và các server mình đọc được.</summary>
     public async Task<IReadOnlyList<MessageDto>> SearchAsync(Guid userId, string? keyword, Guid? senderId, Guid? conversationId,
         DateTime? from, DateTime? to, int skip, int take, CancellationToken ct)
     {

@@ -3,12 +3,11 @@ using Nebula.Shared.Contracts;
 
 namespace Nebula.Messaging.Application;
 
-/// <summary>Đẩy tin mới tới màn hình những người trong hội thoại (kể cả người gửi để đồng bộ nhiều thiết bị).</summary>
 public sealed class PushMessageHandler(IRealtimeGateway gateway, IMessageRepository messages, MessageDtoFactory factory) : IEventHandler<MessageSent>
 {
     public async Task HandleAsync(MessageSent e, CancellationToken ct)
     {
-        // Gửi kèm cả tin nhắn đầy đủ (người gửi, file đính kèm) để client hiển thị luôn, không phải gọi API lấy lại.
+        // gửi kèm tin đầy đủ để client khỏi gọi API lại
         var message = await messages.GetAsync(e.MessageId, ct);
         var dto = message is null ? null : await factory.ToDtoAsync(message, false, ct);
         await gateway.PushToUsersAsync(e.RecipientIds.Append(e.SenderId), "MessageReceived",
@@ -16,12 +15,11 @@ public sealed class PushMessageHandler(IRealtimeGateway gateway, IMessageReposit
     }
 }
 
-/// <summary>Sửa / xóa / ghim / reaction: báo cho mọi người trong hội thoại để giao diện cập nhật ngay.</summary>
 public sealed class PushMessageChangedHandler(IRealtimeGateway gateway, IMessageRepository messages, MessageDtoFactory factory) : IEventHandler<MessageChanged>
 {
     public async Task HandleAsync(MessageChanged e, CancellationToken ct)
     {
-        // Gửi kèm tin đã cập nhật (nội dung mới / đã xóa / reaction / ghim) để client vẽ lại ngay, không phải gọi API lấy lại.
+        // gửi kèm tin đã cập nhật
         var message = await messages.GetAsync(e.MessageId, ct);
         MessageDto? dto = null;
         if (message is not null)
@@ -33,7 +31,6 @@ public sealed class PushMessageChangedHandler(IRealtimeGateway gateway, IMessage
     }
 }
 
-/// <summary>Đổi tên / ảnh đại diện → báo cho mọi người đang online (nhỏ, vài chục byte).</summary>
 public sealed class PushProfileHandler(IRealtimeGateway gateway) : IEventHandler<UserProfileChanged>
 {
     public Task HandleAsync(UserProfileChanged e, CancellationToken ct)
@@ -46,13 +43,11 @@ public sealed class PushStatusHandler(IRealtimeGateway gateway) : IEventHandler<
         => gateway.PushToAllAsync("StatusChanged", new { e.UserId, e.Status }, ct);
 }
 
-/// <summary>Organization vừa tạo server → Messaging tự tạo kênh mặc định. Organization không hề biết "kênh" là gì.</summary>
 public sealed class ServerCreatedHandler(ChannelService channels) : IEventHandler<ServerCreated>
 {
     public Task HandleAsync(ServerCreated e, CancellationToken ct) => channels.CreateDefaultChannelsAsync(e.ServerId, e.OwnerId, ct);
 }
 
-/// <summary>Server bị xóa → xóa kênh, category, tin nhắn của server và báo cho các thành viên.</summary>
 public sealed class ServerDeletedHandler(IConversationRepository conversations, IRealtimeGateway gateway) : IEventHandler<ServerDeleted>
 {
     public async Task HandleAsync(ServerDeleted e, CancellationToken ct)
@@ -62,7 +57,6 @@ public sealed class ServerDeletedHandler(IConversationRepository conversations, 
     }
 }
 
-/// <summary>Được thêm / bị xóa khỏi server → báo realtime để giao diện cập nhật danh sách server.</summary>
 public sealed class ServerMembershipRealtimeHandler(IRealtimeGateway gateway, IOrganizationApi organization, IIdentityApi identity)
     : IEventHandler<MemberAddedToServer>, IEventHandler<MemberRemovedFromServer>
 {
@@ -70,7 +64,7 @@ public sealed class ServerMembershipRealtimeHandler(IRealtimeGateway gateway, IO
     {
         await gateway.PushToUsersAsync([e.UserId], "AddedToServer", new { e.ServerId, e.ServerName }, ct);
 
-        // Những người đang ở trong server thấy thành viên mới xuất hiện ngay trong danh sách.
+        // báo cho người đang trong server
         var user = await identity.GetUserAsync(e.UserId, ct);
         if (user is null) return;
         var role = (await organization.GetAccessAsync(e.ServerId, e.UserId, ct)).Role ?? "Member";
@@ -89,7 +83,6 @@ public sealed class ServerMembershipRealtimeHandler(IRealtimeGateway gateway, IO
     }
 }
 
-/// <summary>Có kênh mới → mọi thành viên của server thấy ngay trong thanh bên.</summary>
 public sealed class ChannelCreatedRealtimeHandler(IRealtimeGateway gateway, IConversationRepository conversations) : IEventHandler<ChannelCreated>
 {
     public async Task HandleAsync(ChannelCreated e, CancellationToken ct)
@@ -99,14 +92,12 @@ public sealed class ChannelCreatedRealtimeHandler(IRealtimeGateway gateway, ICon
     }
 }
 
-/// <summary>Người dùng không còn thấy kênh nữa (bị bỏ khỏi kênh riêng tư) → báo để thanh bên ẩn kênh đi.</summary>
 public sealed class ChannelRemovedRealtimeHandler(IRealtimeGateway gateway) : IEventHandler<ChannelRemoved>
 {
     public Task HandleAsync(ChannelRemoved e, CancellationToken ct)
         => gateway.PushToUsersAsync(e.UserIds, "ChannelRemoved", new { e.ChannelId, e.ServerId }, ct);
 }
 
-/// <summary>Server đổi chủ → chủ mới được thêm vào mọi kênh riêng tư, để vẫn nhận tin realtime ở các kênh đó.</summary>
 public sealed class OwnerPrivateChannelsHandler(IConversationRepository conversations, IMessagingUnitOfWork uow) : IEventHandler<MemberRoleChanged>
 {
     public async Task HandleAsync(MemberRoleChanged e, CancellationToken ct)
@@ -121,7 +112,6 @@ public sealed class OwnerPrivateChannelsHandler(IConversationRepository conversa
     }
 }
 
-/// <summary>Mất kết nối cuối cùng / bị xóa khỏi server / server bị xóa → dọn trạng thái kênh thoại, báo mọi người.</summary>
 public sealed class VoiceCleanupHandler(VoiceService voice)
     : IEventHandler<UserDisconnected>, IEventHandler<MemberRemovedFromServer>, IEventHandler<ServerDeleted>
 {
@@ -130,7 +120,6 @@ public sealed class VoiceCleanupHandler(VoiceService voice)
     public Task HandleAsync(ServerDeleted e, CancellationToken ct) => voice.RemoveAsync(r => r.ServerId == e.ServerId, ct);
 }
 
-/// <summary>Admin hệ thống khóa tài khoản → ngắt kết nối realtime của người đó ngay.</summary>
 public sealed class UserLockedHandler(IRealtimeGateway gateway) : IEventHandler<UserLocked>
 {
     public Task HandleAsync(UserLocked e, CancellationToken ct) => gateway.DisconnectUserAsync(e.UserId, ct);

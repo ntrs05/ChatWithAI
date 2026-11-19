@@ -3,8 +3,6 @@ using Nebula.Shared.Contracts;
 
 namespace Nebula.Messaging.Application;
 
-/// <summary>Đổi Message (domain) thành MessageDto có đủ người gửi + server. Hỏi Identity MỘT lần cho cả danh sách,
-/// nên tải 50 tin vẫn chỉ tốn một truy vấn người dùng.</summary>
 public sealed class MessageDtoFactory(IIdentityApi identity, IConversationRepository conversations)
 {
     public async Task<IReadOnlyList<MessageDto>> ToDtosAsync(IReadOnlyList<Message> messages, IReadOnlySet<Guid>? pinned, CancellationToken ct)

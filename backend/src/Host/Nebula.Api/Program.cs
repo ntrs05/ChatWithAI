@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using Nebula.Friends;
+using Nebula.Ai;
 using Nebula.Audit;
 using Nebula.Identity;
 using Nebula.Media;
@@ -56,7 +57,8 @@ builder.Services
     .AddFriendsModule(cfg)
     .AddMessagingModule(cfg)
     .AddNotificationsModule(cfg)
-    .AddAuditModule(cfg);
+    .AddAuditModule(cfg)
+    .AddAiModule(cfg);
 
 // jwt
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o =>
@@ -114,6 +116,7 @@ FriendsModule.Endpoints().Map(app);
 MessagingModule.Endpoints().Map(app);
 NotificationsModule.Endpoints().Map(app);
 AuditModule.Endpoints().Map(app);
+AiModule.Endpoints().Map(app);
 app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 
 if (app.Environment.IsDevelopment())

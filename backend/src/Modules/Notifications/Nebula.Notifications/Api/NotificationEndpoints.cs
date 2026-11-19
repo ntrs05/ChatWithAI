@@ -14,7 +14,7 @@ internal sealed class NotificationEndpoints : IModuleEndpoints
     {
         var g = app.MapGroup("/api/notifications").RequireAuthorization();
 
-        // ---- Hộp thư thông báo ----
+        // hộp thư
         g.MapGet("", async (bool? unreadOnly, int? skip, int? take, HttpContext c, NotificationService s, CancellationToken ct)
             => Results.Ok(await s.ListAsync(c.User.GetUserId(), unreadOnly ?? false, skip ?? 0, take ?? 30, ct)));
         g.MapGet("unread-count", async (HttpContext c, NotificationService s, CancellationToken ct)
@@ -24,13 +24,13 @@ internal sealed class NotificationEndpoints : IModuleEndpoints
         g.MapPut("read-all", async (HttpContext c, NotificationService s, CancellationToken ct)
             => { await s.MarkAllReadAsync(c.User.GetUserId(), ct); return Results.NoContent(); });
 
-        // ---- Cài đặt chung ----
+        // cài đặt chung
         g.MapGet("preferences", async (HttpContext c, NotificationService s, CancellationToken ct)
             => Results.Ok(await s.GetPreferenceAsync(c.User.GetUserId(), ct)));
         g.MapPut("preferences/mentions-only", async (MentionsOnlyRequest r, HttpContext c, NotificationService s, CancellationToken ct)
             => { await s.SetMentionsOnlyAsync(c.User.GetUserId(), r.Value, ct); return Results.NoContent(); });
 
-        // ---- Cài đặt cho CẢ SERVER (server): chuột phải vào server → Tắt âm / Cài đặt thông báo ----
+        // cài đặt theo server
         g.MapGet("servers", async (HttpContext c, NotificationService s, CancellationToken ct)
             => Results.Ok(await s.ListServerSettingsAsync(c.User.GetUserId(), ct)));
         g.MapPut("servers/{serverId:guid}", async (Guid serverId, ServerSettingRequest r, HttpContext c, NotificationService s, CancellationToken ct)
@@ -38,7 +38,7 @@ internal sealed class NotificationEndpoints : IModuleEndpoints
         g.MapDelete("servers/{serverId:guid}", async (Guid serverId, HttpContext c, NotificationService s, CancellationToken ct)
             => { await s.ResetServerSettingAsync(c.User.GetUserId(), serverId, ct); return Results.NoContent(); });
 
-        // ---- Cài đặt từng hội thoại: Level = All | MentionsOnly | Nothing, MutedUntil = tạm tắt tiếng tới lúc nào ----
+        // cài đặt từng hội thoại
         g.MapGet("conversations/{conversationId:guid}", async (Guid conversationId, HttpContext c, NotificationService s, CancellationToken ct)
             => Results.Ok(await s.GetConversationSettingAsync(c.User.GetUserId(), conversationId, ct)));
         g.MapPut("conversations/{conversationId:guid}", async (Guid conversationId, ConversationSettingRequest r, HttpContext c, NotificationService s, CancellationToken ct)

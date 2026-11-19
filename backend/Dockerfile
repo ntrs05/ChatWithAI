@@ -15,6 +15,7 @@ COPY src/Host/Nebula.Api/Nebula.Api.csproj                                      
 COPY src/Modules/Messaging/Nebula.Messaging/Nebula.Messaging.csproj src/Modules/Messaging/Nebula.Messaging/
 COPY src/Modules/Notifications/Nebula.Notifications/Nebula.Notifications.csproj src/Modules/Notifications/Nebula.Notifications/
 COPY src/Modules/Audit/Nebula.Audit/Nebula.Audit.csproj src/Modules/Audit/Nebula.Audit/
+COPY src/Modules/Ai/Nebula.Ai/Nebula.Ai.csproj src/Modules/Ai/Nebula.Ai/
 RUN dotnet restore src/Host/Nebula.Api/Nebula.Api.csproj
 
 COPY src/ src/

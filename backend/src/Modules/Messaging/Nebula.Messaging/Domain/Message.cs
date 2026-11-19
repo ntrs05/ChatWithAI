@@ -15,7 +15,6 @@ public sealed class Message : Entity
     public Guid ConversationId { get; private set; }
     public Guid SenderId { get; private set; }
     public string Content { get; private set; } = "";
-    /// <summary>Trả lời tin nào (cùng hội thoại).</summary>
     public Guid? ReplyToId { get; private set; }
     public DateTime? EditedAt { get; private set; }
     public DateTime? DeletedAt { get; private set; }
@@ -50,8 +49,6 @@ public sealed class Message : Entity
         return Result.Success();
     }
 
-    /// <summary>Xóa mềm: giữ dòng trong DB (biết ai xóa, lúc nào) nhưng ẩn nội dung.
-    /// Người gửi tự xóa, hoặc chủ server/quản trị viên (canModerate) xóa tin trong server mình.</summary>
     public Result Delete(Guid actorId, bool canModerate)
     {
         if (IsDeleted) return Result.Failure(Error.NotFound("Message.Deleted", "Tin nhắn đã bị xóa."));
@@ -64,7 +61,6 @@ public sealed class Message : Entity
         return Result.Success();
     }
 
-    /// <summary>Bấm lần 1 thả cảm xúc, bấm lần 2 gỡ.</summary>
     public Result ToggleReaction(Guid userId, string emoji)
     {
         if (IsDeleted) return Result.Failure(Error.NotFound("Message.Deleted", "Tin nhắn đã bị xóa."));
@@ -76,7 +72,6 @@ public sealed class Message : Entity
     }
 }
 
-/// <summary>Người được tag trong tin. Khóa chính (MessageId, UserId).</summary>
 public sealed class MessageMention
 {
     private MessageMention() { }
@@ -85,7 +80,6 @@ public sealed class MessageMention
     public Guid UserId { get; private set; }
 }
 
-/// <summary>Cảm xúc thả vào tin. Khóa chính (MessageId, UserId, Emoji): mỗi người thả mỗi emoji 1 lần.</summary>
 public sealed class MessageReaction
 {
     private MessageReaction() { }
@@ -96,7 +90,6 @@ public sealed class MessageReaction
     public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
 }
 
-/// <summary>File đính kèm. FileId trỏ tới file ở module Media; tên và kích thước chép lại để hiển thị không cần hỏi Media.</summary>
 public sealed class MessageAttachment : Entity
 {
     private MessageAttachment() { }
@@ -110,7 +103,6 @@ public sealed class MessageAttachment : Entity
         => new() { FileId = fileId, FileName = fileName, ContentType = contentType, SizeBytes = size };
 }
 
-/// <summary>Tin được ghim trong hội thoại: lưu thêm ai ghim, ghim lúc nào. Khóa chính (ConversationId, MessageId).</summary>
 public sealed class PinnedMessage
 {
     private PinnedMessage() { }

@@ -28,7 +28,7 @@ internal sealed class EfConversationRepository(MessagingDbContext db) : IConvers
     }
 
     public async Task AddAsync(Conversation conversation, CancellationToken ct) => await db.Conversations.AddAsync(conversation, ct);
-    public void Remove(Conversation conversation) => db.Conversations.Remove(conversation);   // DB tự xóa tin, ghim, trạng thái (CASCADE)
+    public void Remove(Conversation conversation) => db.Conversations.Remove(conversation);   // DB tự xóa tin, ghim (cascade)
 
     public async Task<IReadOnlyList<Category>> ListCategoriesAsync(Guid serverId, CancellationToken ct)
         => await db.Categories.Where(c => c.ServerId == serverId).OrderBy(c => c.Position).ToListAsync(ct);
@@ -53,7 +53,7 @@ internal sealed class EfConversationRepository(MessagingDbContext db) : IConvers
 
     public async Task DeleteServerDataAsync(Guid serverId, CancellationToken ct)
     {
-        // Xóa kênh trước (DB tự xóa dây chuyền tin nhắn, ghim, trạng thái), rồi mới xóa category.
+        // xóa kênh trước rồi mới xóa category
         await db.Conversations.Where(c => c.ServerId == serverId).ExecuteDeleteAsync(ct);
         await db.Categories.Where(c => c.ServerId == serverId).ExecuteDeleteAsync(ct);
     }
@@ -76,18 +76,18 @@ internal sealed class EfMessageRepository(MessagingDbContext db) : IMessageRepos
         var uidText = uid.ToString();
         var serverIds = q.ReadableServerIds.ToList();
 
-        // Bước 1: những hội thoại người này được đọc = chat 1-1 của mình + kênh của các server mình đọc được.
+        // 1. hội thoại đọc được: chat 1-1 + kênh của server mình đọc được
         var allowed = db.Conversations
             .Where(c => (c.Type == ConversationType.Direct && c.DirectKey!.Contains(uidText)) || (c.ServerId != null && serverIds.Contains(c.ServerId.Value)
                 && (!c.IsPrivate || db.ChannelMembers.Any(cm => cm.ConversationId == c.Id && cm.UserId == uid))))
             .Select(c => c.Id);
         var query = WithChildren.AsNoTracking().Where(m => m.DeletedAt == null && allowed.Contains(m.ConversationId));
 
-        // Bước 2: bỏ những tin người này đã "xóa cuộc trò chuyện phía mình".
+        // 2. bỏ tin đã xóa phía mình
         query = query.Where(m => !db.ConversationMembers.Any(s =>
             s.ConversationId == m.ConversationId && s.UserId == uid && s.ClearedAt != null && m.CreatedAt <= s.ClearedAt));
 
-        // Bước 3: các bộ lọc.
+        // 3. bộ lọc
         if (q.ConversationId is Guid cid) query = query.Where(m => m.ConversationId == cid);
         if (q.SenderId is Guid sid) query = query.Where(m => m.SenderId == sid);
         if (q.From is DateTime from) query = query.Where(m => m.CreatedAt >= from);
@@ -107,7 +107,6 @@ internal sealed class EfMessageRepository(MessagingDbContext db) : IMessageRepos
     public void RemovePin(PinnedMessage pin) => db.PinnedMessages.Remove(pin);
 }
 
-/// <summary>Trạng thái kênh thoại trong bộ nhớ tiến trình (1 instance). Chạy nhiều instance thì chuyển sang Redis.</summary>
 internal sealed class InMemoryVoiceStateStore : IVoiceStateStore
 {
     private readonly object _gate = new();

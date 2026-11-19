@@ -5,10 +5,8 @@ namespace Nebula.Messaging.Application;
 public sealed record AttachmentDto(Guid FileId, string FileName, string ContentType, long SizeBytes, string Url);
 public sealed record ReactionDto(string Emoji, int Count, IReadOnlyList<Guid> UserIds);
 
-/// <summary>Người gửi, kèm tên và avatar để giao diện hiển thị ngay mà không phải hỏi thêm từng người.</summary>
 public sealed record AuthorDto(Guid Id, string DisplayName, string Username, string? AvatarUrl);
 
-/// <param name="ServerId">Server chứa kênh này (null nếu là chat 1-1).</param>
 public sealed record MessageDto(
     Guid Id, Guid ConversationId, Guid SenderId, string Content, Guid? ReplyToId,
     DateTime CreatedAt, DateTime? EditedAt, bool IsDeleted, bool IsPinned,
@@ -22,7 +20,6 @@ public sealed record MessageDto(
         m.Reactions.GroupBy(r => r.Emoji).Select(g => new ReactionDto(g.Key, g.Count(), g.Select(r => r.UserId).ToList())).ToList());
 }
 
-/// <summary>Một trang lịch sử: tin xếp CŨ → MỚI (đúng thứ tự hiển thị), HasMore = còn tin cũ hơn nữa.</summary>
 public sealed record MessagePageDto(IReadOnlyList<MessageDto> Messages, bool HasMore);
 
 public sealed record VoiceParticipantDto(Guid ChannelId, Guid ServerId, AuthorDto User, string ClientId, bool Muted, bool Deafened, DateTime JoinedAt);
@@ -34,9 +31,6 @@ public sealed record ChannelDto(Guid Id, Guid ServerId, Guid? CategoryId, string
 
 public sealed record CategoryDto(Guid Id, string Name, int Position, IReadOnlyList<ChannelDto> Channels);
 
-/// <summary>Kênh của một server, chia theo category. Kênh không thuộc category nào nằm ở Uncategorized.</summary>
 public sealed record ServerChannelsDto(Guid ServerId, IReadOnlyList<CategoryDto> Categories, IReadOnlyList<ChannelDto> Uncategorized);
 
-/// <param name="Other">Người ở đầu bên kia (tên, avatar) để giao diện hiển thị luôn.</param>
-/// <param name="IsFriend">False nếu hai người đã hủy kết bạn: vẫn đọc được lịch sử nhưng không nhắn thêm được.</param>
 public sealed record DirectDto(Guid ConversationId, Guid OtherUserId, bool IsArchived, DateTime? LastMessageAt, bool HasUnread, AuthorDto? Other = null, bool IsFriend = true);

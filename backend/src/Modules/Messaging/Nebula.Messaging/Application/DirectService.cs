@@ -9,7 +9,6 @@ public sealed class DirectService(IConversationRepository conversations, IIdenti
     private async Task<AuthorDto> OtherAsync(Guid otherId, CancellationToken ct)
         => MessageDtoFactory.AuthorOf(await identity.GetUsersAsync([otherId], ct), otherId);
 
-    /// <summary>Mở (hoặc tạo nếu chưa có) chat 1-1. Gọi nhiều lần vẫn ra cùng một hội thoại.</summary>
     public async Task<Result<DirectDto>> OpenAsync(Guid userId, Guid otherUserId, CancellationToken ct)
     {
         if (userId == otherUserId) return new Error("Direct.Self", "Không thể nhắn tin cho chính mình.");
@@ -19,7 +18,7 @@ public sealed class DirectService(IConversationRepository conversations, IIdenti
         var isFriend = await friends.AreFriendsAsync(userId, otherUserId, ct);
         if (conversation is null)
         {
-            // Chỉ bạn bè mới bắt đầu được cuộc trò chuyện 1-1 (chặn người lạ nhắn tin làm phiền).
+            // chỉ bạn bè mới nhắn 1-1
             if (!isFriend) return Error.Forbidden("Direct.NotFriends", "Hai bạn cần là bạn bè mới nhắn tin riêng được.");
             conversation = Conversation.CreateDirect(userId, otherUserId);
             await conversations.AddAsync(conversation, ct);
@@ -30,7 +29,6 @@ public sealed class DirectService(IConversationRepository conversations, IIdenti
         return Result.Success(new DirectDto(conversation.Id, otherUserId, false, null, false, await OtherAsync(otherUserId, ct), isFriend));
     }
 
-    /// <summary>Danh sách chat 1-1, mới nhất trước. Cuộc đã "xóa phía mình" chỉ hiện lại khi có tin mới.</summary>
     public async Task<IReadOnlyList<DirectDto>> ListAsync(Guid userId, bool archived, CancellationToken ct)
     {
         var rows = (await conversations.ListDirectForUserAsync(userId, ct))
@@ -50,11 +48,9 @@ public sealed class DirectService(IConversationRepository conversations, IIdenti
         return result;
     }
 
-    /// <summary>Ẩn/hiện cuộc trò chuyện chỉ với riêng người gọi; người kia vẫn thấy bình thường.</summary>
     public Task<Result> SetArchivedAsync(Guid userId, Guid conversationId, bool archived, CancellationToken ct)
         => UpdateStateAsync(userId, conversationId, s => s.SetArchived(archived), ct);
 
-    /// <summary>Xóa cuộc trò chuyện phía mình: lịch sử cũ biến mất với mình, người kia không bị ảnh hưởng.</summary>
     public Task<Result> ClearAsync(Guid userId, Guid conversationId, CancellationToken ct)
         => UpdateStateAsync(userId, conversationId, s => s.Clear(), ct);
 

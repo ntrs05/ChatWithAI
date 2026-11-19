@@ -27,17 +27,13 @@ public sealed class AuditService(IAuditRepository repo)
         => (await repo.SearchAsync(q with { Skip = Math.Max(0, q.Skip), Take = Math.Clamp(q.Take, 1, 200) }, ct)).Select(AuditLogDto.From).ToList();
 }
 
-/// <summary>
-/// Ghi nhật ký bằng cách NGHE event của các module khác (Pub-Sub). Identity, Organization, Media không hề gọi Audit:
-/// muốn ghi thêm loại hoạt động nào chỉ cần thêm một hàm HandleAsync ở đây.
-/// </summary>
 public sealed class AuditEventHandler(IAuditRepository repo, IAuditUnitOfWork uow) :
     IEventHandler<UserRegistered>, IEventHandler<UserLocked>, IEventHandler<UserUnlocked>,
     IEventHandler<ServerCreated>, IEventHandler<ServerDeleted>,
     IEventHandler<MemberAddedToServer>, IEventHandler<MemberRemovedFromServer>, IEventHandler<MemberRoleChanged>,
     IEventHandler<SystemSettingChanged>, IEventHandler<StorageQuotaChanged>
 {
-    // Giữ nguyên tiếng Việt trong JSON (không đổi thành ạ...).
+    // giữ nguyên tiếng Việt trong json
     private static readonly JsonSerializerOptions Json = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
     private async Task LogAsync(Guid actorId, string action, string targetType, object targetId, object evt, CancellationToken ct)

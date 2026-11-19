@@ -5,16 +5,12 @@ using Nebula.Shared.Kernel;
 
 namespace Nebula.Messaging.Application;
 
-/// <summary>Một "client" (một tab trình duyệt) đang ở trong kênh thoại. Chỉ lưu trong bộ nhớ: khởi động lại server thì mọi người phải vào lại,
-/// điều này chấp nhận được vì kết nối âm thanh cũng đứt theo.</summary>
 public sealed record VoiceStateRow(Guid ChannelId, Guid ServerId, Guid UserId, string ClientId, bool Muted, bool Deafened, DateTime JoinedAt);
 
 public interface IVoiceStateStore
 {
-    /// <summary>Thêm client vào kênh; client đang ở kênh khác thì bị đưa ra khỏi kênh đó. Trả về các dòng cũ bị thay.</summary>
     IReadOnlyList<VoiceStateRow> Join(VoiceStateRow row);
     VoiceStateRow? Get(Guid channelId, string clientId);
-    /// <summary>Client này (ở bất kỳ kênh nào) đang thuộc về ai, nếu có.</summary>
     VoiceStateRow? FindByClient(string clientId);
     VoiceStateRow? Remove(Guid channelId, string clientId);
     VoiceStateRow? Update(Guid channelId, string clientId, bool muted, bool deafened);
@@ -26,11 +22,8 @@ public interface IVoiceStateStore
 public sealed record VoiceJoinRequest(string ClientId, bool Muted, bool Deafened);
 public sealed record VoiceLeaveRequest(string ClientId);
 
-/// <summary>Tín hiệu WebRTC (offer/answer/ICE). Server chỉ chuyển tiếp, âm thanh đi thẳng giữa các trình duyệt.</summary>
 public sealed record VoiceSignalDto(Guid ChannelId, string From, string? To, JsonElement Data);
 
-/// <summary>Kênh thoại: ai đang ở trong kênh nào (presence) và chuyển tiếp tín hiệu WebRTC.
-/// Quyền vào kênh dùng chung luật với kênh chat (ConversationAccess).</summary>
 public sealed class VoiceService(
     IConversationRepository conversations, ConversationAccess access, IOrganizationApi organization,
     IIdentityApi identity, IVoiceStateStore store, IRealtimeGateway gateway)
@@ -43,7 +36,7 @@ public sealed class VoiceService(
         var a = await access.CheckAsync(channelId, userId, ct);
         if (a is null || !a.CanRead) return Error.Forbidden("Voice.NoAccess", "Bạn không có quyền vào kênh này.");
 
-        // clientId đang thuộc về người khác thì không cho chiếm (chặn đá người khác ra khỏi kênh bằng cách đoán clientId).
+        // clientId của người khác thì không cho chiếm
         if (store.FindByClient(req.ClientId) is { } owner && owner.UserId != userId)
             return Error.Forbidden("Voice.ClientTaken", "clientId này đang được dùng bởi người khác.");
 
@@ -77,7 +70,6 @@ public sealed class VoiceService(
         return Result.Success();
     }
 
-    /// <summary>Ai đang ở trong các kênh thoại của server (để hiện dưới tên kênh).</summary>
     public async Task<Result<IReadOnlyList<VoiceParticipantDto>>> ListAsync(Guid userId, Guid serverId, CancellationToken ct)
     {
         var g = await organization.GetAccessAsync(serverId, userId, ct);
@@ -86,7 +78,6 @@ public sealed class VoiceService(
         return Result.Success(await ToDtosAsync(store.ListByServer(serverId), ct));
     }
 
-    /// <summary>Chuyển tín hiệu WebRTC tới người khác trong kênh. Người gửi phải đang ở trong kênh bằng đúng clientId đó.</summary>
     public async Task RelaySignalAsync(Guid userId, VoiceSignalDto signal, CancellationToken ct)
     {
         var sender = store.Get(signal.ChannelId, signal.From);
@@ -98,7 +89,6 @@ public sealed class VoiceService(
             await gateway.PushToUsersAsync(targets, "VoiceSignal", new { signal.ChannelId, signal.From, signal.To, signal.Data }, ct);
     }
 
-    /// <summary>Gọi khi người dùng mất kết nối / bị xóa khỏi server / server bị xóa: dọn trạng thái và báo mọi người.</summary>
     public async Task RemoveAsync(Func<VoiceStateRow, bool> predicate, CancellationToken ct)
     {
         foreach (var row in store.RemoveWhere(predicate)) await PushLeftAsync(row, ct);

@@ -21,7 +21,6 @@ public interface INotificationRepository
     Task<IReadOnlyList<ServerSetting>> ListServerSettingsAsync(Guid userId, CancellationToken ct);
     Task AddServerSettingAsync(ServerSetting s, CancellationToken ct);
     void RemoveServerSetting(ServerSetting s);
-    /// <summary>Xóa cài đặt khi server bị xóa (serverId) hoặc khi người đó rời server (kèm userId).</summary>
     Task DeleteServerSettingsAsync(Guid serverId, Guid? userId, CancellationToken ct);
 
     Task AddNotificationsAsync(IEnumerable<Notification> items, CancellationToken ct);

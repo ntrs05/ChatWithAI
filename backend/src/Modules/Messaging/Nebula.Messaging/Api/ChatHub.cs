@@ -7,14 +7,10 @@ using Nebula.Shared.Infrastructure;
 
 namespace Nebula.Messaging.Api;
 
-/// <summary>Theo dõi các kết nối đang mở của từng người (nhiều tab/thiết bị). Online khi có kết nối đầu tiên,
-/// Offline khi đóng kết nối cuối cùng, và cho phép ngắt toàn bộ kết nối của người bị cấm.
-/// Lưu trong bộ nhớ tiến trình: đủ cho 1 instance; chạy nhiều instance thì cần Redis backplane.</summary>
 public sealed class PresenceTracker
 {
     private readonly ConcurrentDictionary<Guid, ConcurrentDictionary<string, HubCallerContext>> _connections = new();
 
-    /// <returns>true nếu đây là kết nối đầu tiên của người này.</returns>
     public bool Connected(Guid userId, HubCallerContext ctx)
     {
         var set = _connections.GetOrAdd(userId, _ => new());
@@ -22,7 +18,6 @@ public sealed class PresenceTracker
         return set.Count == 1;
     }
 
-    /// <returns>true nếu vừa đóng kết nối cuối cùng.</returns>
     public bool Disconnected(Guid userId, string connectionId)
     {
         if (!_connections.TryGetValue(userId, out var set)) return false;
@@ -39,7 +34,6 @@ public sealed class PresenceTracker
     }
 }
 
-/// <summary>SignalR dùng claim "sub" làm định danh người dùng, để gửi theo UserId.</summary>
 internal sealed class SubUserIdProvider : IUserIdProvider
 {
     public string? GetUserId(HubConnectionContext connection) => connection.User.FindFirst("sub")?.Value;
@@ -62,8 +56,6 @@ public sealed class ChatHub(PresenceTracker presence, IEventBus bus, Conversatio
         await base.OnDisconnectedAsync(exception);
     }
 
-    /// <summary>"Đang gõ...". Chỉ phát tạm thời cho người trong hội thoại, KHÔNG lưu vào DB.
-    /// Client nên gọi tối đa vài giây một lần. Người đã tắt typing indicator trong cài đặt thì server bỏ qua.</summary>
     public async Task Typing(Guid conversationId)
     {
         if (await identity.GetUserAsync(UserId, Context.ConnectionAborted) is not { TypingIndicatorEnabled: true } me) return;
@@ -73,7 +65,6 @@ public sealed class ChatHub(PresenceTracker presence, IEventBus bus, Conversatio
         await Clients.Users(others).SendAsync("Typing", new { ConversationId = conversationId, UserId, me.DisplayName });
     }
 
-    /// <summary>Chuyển tiếp tín hiệu WebRTC (offer/answer/ICE) cho người khác trong cùng kênh thoại.</summary>
     public Task VoiceSignal(VoiceSignalDto signal) => voice.RelaySignalAsync(UserId, signal, Context.ConnectionAborted);
 }
 

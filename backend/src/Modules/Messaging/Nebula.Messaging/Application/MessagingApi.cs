@@ -3,7 +3,6 @@ using Nebula.Shared.Contracts;
 
 namespace Nebula.Messaging.Application;
 
-/// <summary>Hiện thực IMessagingApi: dùng lại ConversationAccess để kiểm tra quyền đọc, nên module Ai không cần biết luật phân quyền.</summary>
 public sealed class MessagingApi(ConversationAccess access, IMessageRepository messages, IIdentityApi identity, IMessagingUnitOfWork uow, IEventBus bus) : IMessagingApi
 {
     public async Task<RecentChat> GetRecentChatAsync(Guid userId, Guid conversationId, int limit, DateTime? since = null, CancellationToken ct = default)
@@ -15,7 +14,7 @@ public sealed class MessagingApi(ConversationAccess access, IMessageRepository m
 
         var newestFirst = await messages.ListAsync(conversationId, null, since, Math.Clamp(limit, 1, 300), ct);
         var users = await identity.GetUsersAsync(newestFirst.Select(m => m.SenderId).Where(id => id != BotIdentity.Id).ToList(), ct);
-        // Bỏ tin của bot và các câu gọi bot ("@nebula ...") khỏi nội dung cần tóm tắt.
+        // bỏ tin của bot và câu gọi bot khỏi nội dung tóm tắt
         var lines = newestFirst.Where(m => !m.IsDeleted && m.SenderId != BotIdentity.Id && !IsBotCommand(m.Content)).Reverse()
             .Select(m => new ChatLine(users.TryGetValue(m.SenderId, out var u) ? u.DisplayName : "Ẩn danh", m.Content, m.CreatedAt, m.Attachments.Count))
             .ToList();
@@ -33,7 +32,7 @@ public sealed class MessagingApi(ConversationAccess access, IMessageRepository m
         await messages.AddAsync(created.Value, ct);
         await uow.SaveChangesAsync(ct);
 
-        // Người nhận = mọi người đọc được kênh (kênh riêng tư thì chỉ những người trong danh sách).
+        // người nhận = người đọc được kênh
         await bus.PublishAsync(new MessageSent(created.Value.Id, conversationId, a.Conversation.ServerId, BotIdentity.Id, created.Value.Content,
             created.Value.CreatedAt, false, a.ParticipantIds.ToList(), []), ct);
         return true;

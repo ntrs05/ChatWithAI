@@ -15,8 +15,7 @@ public sealed class MessagingDbContext(DbContextOptions<MessagingDbContext> opti
 
     protected override void OnModelCreating(ModelBuilder b)
     {
-        // ServerId, UserId, SenderId, FileId thuộc module khác nên chỉ là Guid thường, KHÔNG có khóa ngoại.
-        // Khóa ngoại chỉ đặt giữa các bảng trong cùng module Messaging.
+        // id của module khác chỉ là Guid, không có khóa ngoại
 
         b.Entity<Category>(e =>
         {
@@ -35,7 +34,7 @@ public sealed class MessagingDbContext(DbContextOptions<MessagingDbContext> opti
             e.Property(x => x.DirectKey).HasMaxLength(80);
             e.HasIndex(x => x.DirectKey).IsUnique();         // nhiều NULL vẫn hợp lệ trong MySQL
             e.HasIndex(x => x.ServerId);
-            // Không cho xóa category còn kênh (Restrict); service cũng đã kiểm tra trước.
+            // không cho xóa category còn kênh
             e.HasOne<Category>().WithMany().HasForeignKey(x => x.CategoryId).OnDelete(DeleteBehavior.Restrict);
             e.Ignore(x => x.IsDirect);
         });
@@ -65,8 +64,7 @@ public sealed class MessagingDbContext(DbContextOptions<MessagingDbContext> opti
             e.HasIndex(x => x.ReplyToId);
             e.HasOne<Conversation>().WithMany().HasForeignKey(x => x.ConversationId).OnDelete(DeleteBehavior.Cascade);
             e.Ignore(x => x.IsDeleted);
-            // ReplyToId cố ý KHÔNG có FK: MySQL không cho xóa dây chuyền trên cùng một bảng,
-            // nên xóa kênh có tin trả lời sẽ bị lỗi. Tin nhắn lại chỉ xóa mềm nên không lo trỏ vào tin không tồn tại.
+            // ReplyToId không có FK vì MySQL không cho cascade trên cùng một bảng
 
             e.HasMany(x => x.Mentions).WithOne().HasForeignKey(x => x.MessageId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(x => x.Reactions).WithOne().HasForeignKey(x => x.MessageId).OnDelete(DeleteBehavior.Cascade);

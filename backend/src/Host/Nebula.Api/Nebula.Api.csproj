@@ -18,6 +18,7 @@
     <ProjectReference Include='../../Modules/Messaging/Nebula.Messaging/Nebula.Messaging.csproj' />
     <ProjectReference Include='../../Modules/Notifications/Nebula.Notifications/Nebula.Notifications.csproj' />
     <ProjectReference Include='../../Modules/Audit/Nebula.Audit/Nebula.Audit.csproj' />
+    <ProjectReference Include='../../Modules/Ai/Nebula.Ai/Nebula.Ai.csproj' />
   </ItemGroup>
 
   <!-- Host tham chiếu mọi module để lắp ráp. Module không được tham chiếu ngược lại Host. -->

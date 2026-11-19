@@ -8,14 +8,8 @@ using Nebula.Shared.Kernel;
 
 namespace Nebula.Messaging.Application;
 
-/// <summary>Địa chỉ + vé để trình duyệt nối vào máy chủ SFU (LiveKit).</summary>
 public sealed record SfuTokenDto(string Url, string Token);
 
-/// <summary>
-/// Cấp "vé" vào phòng LiveKit cho người đang ở trong kênh thoại. Dùng SFU (máy chủ nhận âm thanh từ mỗi người rồi chia lại)
-/// thay cho mesh: mỗi người chỉ gửi 1 luồng lên server thay vì gửi cho từng người, nên phòng đông không bị nghẽn.
-/// Chưa cấu hình LIVEKIT_* thì trả lỗi NotFound và giao diện tự dùng lại mesh WebRTC.
-/// </summary>
 public sealed class VoiceTokenService(IConfiguration cfg, IVoiceStateStore store, ConversationAccess access)
 {
     private static readonly TimeSpan Lifetime = TimeSpan.FromHours(2);
@@ -27,7 +21,7 @@ public sealed class VoiceTokenService(IConfiguration cfg, IVoiceStateStore store
     {
         if (!Enabled) return Error.NotFound("Voice.SfuDisabled", "Máy chủ chưa bật SFU (LiveKit).");
 
-        // Chỉ cấp vé cho người đã "vào kênh" bằng đúng clientId này và vẫn còn quyền đọc kênh.
+        // chỉ cấp token cho người đã vào kênh và còn quyền đọc
         var row = store.Get(channelId, clientId);
         if (row is null || row.UserId != userId) return Error.Forbidden("Voice.NotJoined", "Bạn chưa ở trong kênh thoại này.");
         var a = await access.CheckAsync(channelId, userId, ct);
@@ -36,7 +30,6 @@ public sealed class VoiceTokenService(IConfiguration cfg, IVoiceStateStore store
         return Result.Success(new SfuTokenDto(cfg["Livekit:Url"]!, Sign(cfg["Livekit:ApiKey"]!, cfg["Livekit:ApiSecret"]!, channelId, clientId, DateTimeOffset.UtcNow)));
     }
 
-    /// <summary>JWT HS256 theo định dạng LiveKit: iss = API key, sub = danh tính, video = quyền trong phòng. Phòng = id kênh.</summary>
     internal static string Sign(string apiKey, string secret, Guid channelId, string identity, DateTimeOffset now)
     {
         var header = new { alg = "HS256", typ = "JWT" };
