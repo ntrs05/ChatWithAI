@@ -4,7 +4,7 @@ Frontend cho đồ án **Hệ thống Chat & Voice** (lấy cảm hứng từ Di
 Xây dựng bằng **React 18 + TypeScript + Vite + Tailwind CSS + Zustand**, áp dụng 3 mẫu kiến trúc:
 
 1. **Layered Architecture** — mỗi module chia tầng Presentation / Application / Domain / Infrastructure
-2. **Modular Monolith** — 8 module độc lập trong một ứng dụng: `auth`, `server`, `chat`, `voice`, `ai`, `friends`, `direct`, `notifications`
+2. **Modular Monolith** — 9 module độc lập trong một ứng dụng: `auth`, `server`, `chat`, `voice`, `ai`, `friends`, `direct`, `notifications`, `admin`
 3. **Pub-Sub** — module giao tiếp qua Event Bus; sự kiện realtime từ mạng cũng đổ vào cùng bus
 
 ---
@@ -23,7 +23,7 @@ Các lệnh khác:
 
 ```bash
 npm run build        # kiểm tra kiểu + build production
-npm test             # 18 unit test (Event Bus, quy tắc domain, ...)
+npm test             # unit test (Event Bus, quy tắc domain, service, giao diện...)
 npm run check:arch   # kiểm tra tự động quy tắc Layered + Modular Monolith
 ```
 
@@ -39,10 +39,10 @@ npm run check:arch   # kiểm tra tự động quy tắc Layered + Modular Monol
 | UC04 Gửi / Nhận tin nhắn Text | User | `chat` | `ChatService.send()`, `Composer.tsx`, sự kiện `chat.message.created` |
 | UC05 Xem lịch sử tin nhắn | User | `chat` | `ChatService.loadOlder()`, `MessageList.tsx`, `SearchBox.tsx` |
 | UC06 Tải lên File / Hình ảnh | User | `chat` | `FileStorage` port, `AttachmentView.tsx`, kéo-thả / dán ảnh |
-| UC07 Tham gia / Rời kênh Voice | User | `voice` | `VoiceService.join()/leave()`, `WebRtcMesh.ts`, `VoiceRoomView.tsx` |
+| UC07 Tham gia / Rời kênh Voice | User | `voice` | `VoiceService.join()/leave()`, `LiveKitMesh.ts` (tự chuyển sang `WebRtcMesh.ts` khi không dùng được LiveKit), `VoiceRoomView.tsx` |
 | UC08 Bật / Tắt Micro | User | `voice` | `VoiceService.toggleMute()`, `VoiceControls` |
 | UC09 Tóm tắt tin nhắn bằng AI | User → **AI Service** | `ai` | `AiService.ts`, `AiGateway` port, `SummaryPanel.tsx` |
-| Kết bạn (tìm người, gửi / chấp nhận / từ chối lời mời, hủy kết bạn) | User | `friends` | `FriendService.ts`, `FriendsView.tsx` (chỉ có khi dùng backend thật) |
+| Kết bạn (tìm người, gửi / chấp nhận / từ chối lời mời, hủy kết bạn) | User | `friends` | `FriendService.ts`, `FriendsView.tsx` |
 | Chuột phải vào server: Đánh dấu đã đọc · Mời vào máy chủ · Tắt âm · Cài đặt thông báo · Rời khỏi máy chủ | User | `server` | `ServerContextMenu.tsx`, `ServerService.ts`, `shared/ui/ContextMenu.tsx` |
 
 Quan hệ **Admin kế thừa User** (mũi tên nét đứt trong sơ đồ) được hiện thực bằng vai trò thành viên của server:
@@ -87,7 +87,8 @@ src/
 │   ├── ai/         UC09
 │   ├── friends/    Bạn bè (danh sách, lời mời, kết bạn bằng tên + ID)
 │   ├── direct/     Chat 1-1 giữa bạn bè
-│   └── notifications/  Hộp thư thông báo (chuông)
+│   ├── notifications/  Hộp thư thông báo (chuông)
+│   └── admin/      Trang quản trị hệ thống (người dùng, server, nhật ký)
 ├── shared/         Shared kernel: EventBus, RealtimeHub, HTTP client, UI kit, kiểu UserProfile
 ```
 
