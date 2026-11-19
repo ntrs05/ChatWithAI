@@ -14,6 +14,10 @@ export default defineConfig(({ mode }) => {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
       },
     },
+    build: {
+      // src/main.tsx dùng top-level await (`await bootstrap()`) → cần target ES2022 trở lên.
+      target: 'es2022',
+    },
     server: {
       port: 5173,
       // Trình duyệt chỉ nói chuyện với :5173; Vite chuyển tiếp REST (/api) và WebSocket SignalR (/hubs) sang backend
